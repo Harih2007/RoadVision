@@ -160,30 +160,40 @@ async def startup_check():
     logger.info("=" * 60)
 
 
-# ---- Background Video Analysis Job System ----
-import threading
-import uuid as _uuid
+# ---- Analyze Video Endpoint ----
+@app.post("/analyze-video")
+async def analyze_video(video: UploadFile = File(...)):
+    """
+    Analyze an uploaded traffic video for illegal number plates.
+    Returns detections directly (synchronous).
+    """
+    logger.info(f"Received video upload: {video.filename} ({video.content_type})")
 
-# In-memory job store: job_id -> {status, progress, detections, error}
-_analysis_jobs: dict = {}
+    allowed_types = {'video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'video/x-msvideo'}
+    if video.content_type and video.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {video.content_type}")
 
-
-def _run_analysis_job(job_id: str, temp_path: str):
-    """Run the full YOLO+OCR+validation pipeline in a background thread."""
+    temp_path = None
     try:
-        _analysis_jobs[job_id]['status'] = 'processing'
-        _analysis_jobs[job_id]['progress'] = 'Running YOLO detection...'
+        file_bytes = await video.read()
+        if len(file_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Empty video file.")
 
-        raw_detections = process_video(temp_path, frame_interval=3)
-        logger.info(f"Job {job_id}: {len(raw_detections)} raw detections")
+        ext = os.path.splitext(video.filename or 'video.mp4')[1] or '.mp4'
+        temp_path = save_upload_to_temp(file_bytes, suffix=ext)
+        logger.info(f"Saved to temp: {temp_path} ({len(file_bytes)} bytes)")
+
+        # Step 1: Process video frames — every 5th frame for speed
+        logger.info("Starting YOLO + OCR pipeline...")
+        raw_detections = process_video(temp_path, frame_interval=5)
+        logger.info(f"Raw plate detections from YOLO: {len(raw_detections)}")
 
         if not raw_detections:
-            _analysis_jobs[job_id].update(status='done', progress='Complete', detections=[])
-            return
+            return JSONResponse(content={"detections": []})
 
-        _analysis_jobs[job_id]['progress'] = f'Reading {len(raw_detections)} plates via OCR...'
-
+        # Step 2: OCR + validation
         plate_detections = {}
+
         for idx, det in enumerate(raw_detections):
             plate_text = read_plate(det['raw_crop'], det['crop'])
             if not plate_text:
@@ -193,6 +203,8 @@ def _run_analysis_job(job_id: str, temp_path: str):
                 continue
 
             validation = validate_plate(plate_text, det.get('raw_crop'))
+            logger.info(f"Detection {idx}: '{validation.detected_plate}' → {validation.violation or 'None'}")
+
             yolo_conf = det['confidence']
             ocr_conf = get_read_confidence(det['raw_crop'], det['crop'])
             base_conf = (yolo_conf * 0.4 + ocr_conf * 0.6)
@@ -232,11 +244,7 @@ def _run_analysis_job(job_id: str, temp_path: str):
                 plate_detections[normalized] = []
             plate_detections[normalized].append(detection_entry)
 
-            if idx % 10 == 0:
-                _analysis_jobs[job_id]['progress'] = f'Processing detection {idx+1}/{len(raw_detections)}...'
-
-        # Stabilization + deduplication
-        _analysis_jobs[job_id]['progress'] = 'Stabilizing and deduplicating...'
+        # Step 3: Stabilization + deduplication
         MIN_FRAMES_REQUIRED = 2
         detections: List[dict] = []
         processed_plates = set()
@@ -264,64 +272,21 @@ def _run_analysis_job(job_id: str, temp_path: str):
                     pass
 
         detections.sort(key=lambda d: d.get('frame', 0))
-        logger.info(f"Job {job_id}: {len(detections)} final detections")
-        _analysis_jobs[job_id].update(status='done', progress='Complete', detections=detections)
+        logger.info(f"Final: {len(detections)} detections (stabilized + deduped)")
 
+        return JSONResponse(content={"detections": detections})
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Job {job_id} failed: {e}", exc_info=True)
-        _analysis_jobs[job_id].update(status='error', error=str(e))
+        logger.error(f"Pipeline error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Video analysis failed: {str(e)}")
     finally:
         if temp_path and os.path.exists(temp_path):
             try:
                 os.unlink(temp_path)
             except OSError:
                 pass
-
-
-@app.post("/analyze-video")
-async def analyze_video(video: UploadFile = File(...)):
-    """
-    Start background video analysis. Returns job_id immediately.
-    Frontend polls /api/analysis-status/{job_id} for progress and results.
-    """
-    logger.info(f"Received video upload: {video.filename} ({video.content_type})")
-
-    allowed_types = {'video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'video/x-msvideo'}
-    if video.content_type and video.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {video.content_type}")
-
-    file_bytes = await video.read()
-    if len(file_bytes) == 0:
-        raise HTTPException(status_code=400, detail="Empty video file.")
-
-    ext = os.path.splitext(video.filename or 'video.mp4')[1] or '.mp4'
-    temp_path = save_upload_to_temp(file_bytes, suffix=ext)
-
-    job_id = str(_uuid.uuid4())[:8]
-    _analysis_jobs[job_id] = {
-        'status': 'queued', 'progress': 'Starting analysis...',
-        'detections': [], 'error': None,
-    }
-
-    thread = threading.Thread(target=_run_analysis_job, args=(job_id, temp_path), daemon=True)
-    thread.start()
-    logger.info(f"Started background analysis job: {job_id}")
-
-    return JSONResponse(content={"job_id": job_id, "message": "Analysis started in background"})
-
-
-@app.get("/api/analysis-status/{job_id}")
-async def get_analysis_status(job_id: str):
-    """Poll for background video analysis status and results."""
-    if job_id not in _analysis_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    job = _analysis_jobs[job_id]
-    return JSONResponse(content={
-        "status": job['status'],
-        "progress": job['progress'],
-        "detections": job.get('detections', []) if job['status'] == 'done' else [],
-        "error": job.get('error'),
-    })
 
 
 

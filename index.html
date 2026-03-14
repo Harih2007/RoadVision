@@ -333,19 +333,17 @@
       }
     } catch (e) { /* ignore parse errors */ }
 
-    // Analyze button — submits video, gets job_id, polls for results
+    // Analyze button — direct fetch, waits for results
     analyzeBtn.addEventListener('click', async () => {
       if (!uploadedFile) return;
       isAnalyzing = true;
       analyzeBtn.disabled = true;
-      analyzeBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">hourglass_top</span> Uploading...';
+      analyzeBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">hourglass_top</span> Analyzing...';
       processingIndicator.style.display = 'flex';
-      const progressText = processingIndicator.querySelector('p') || processingIndicator;
       detectionResults.style.display = 'none';
       clearBoundingBoxes();
 
       try {
-        // Step 1: Upload video — backend returns job_id immediately
         const formData = new FormData();
         formData.append('video', uploadedFile);
 
@@ -354,16 +352,28 @@
           body: formData
         });
 
-        if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
-        const { job_id } = await response.json();
-        console.log('Analysis job started:', job_id);
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-        // Save job_id so we can resume polling if user navigates away and comes back
-        sessionStorage.setItem('roadvision_active_job', job_id);
+        const data = await response.json();
+        isAnalyzing = false;
+        processingIndicator.style.display = 'none';
+        resetAnalyzeBtn();
 
-        // Step 2: Poll for results every 2 seconds
-        analyzeBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">hourglass_top</span> Analyzing...';
-        await _pollForResults(job_id, progressText);
+        if (!data.detections || data.detections.length === 0) {
+          showNoDetections();
+          sessionStorage.removeItem('roadvision_last_results');
+          return;
+        }
+
+        console.log(`Received ${data.detections.length} detections from backend`);
+
+        // Cache results so they survive page reloads
+        try {
+          sessionStorage.setItem('roadvision_last_results', JSON.stringify(data.detections));
+        } catch (e) { /* ignore */ }
+
+        await updateDashboardStats();
+        displayResults(data.detections);
 
       } catch (err) {
         isAnalyzing = false;
@@ -383,82 +393,6 @@
         `;
       }
     });
-
-    // Poll the backend for analysis results
-    async function _pollForResults(jobId, progressEl) {
-      const POLL_INTERVAL = 2000; // 2 seconds
-
-      while (true) {
-        await new Promise(r => setTimeout(r, POLL_INTERVAL));
-
-        try {
-          const res = await fetch(`http://localhost:8000/api/analysis-status/${jobId}`);
-          if (!res.ok) throw new Error(`Poll failed: ${res.status}`);
-          const job = await res.json();
-
-          // Update progress text
-          if (progressEl && job.progress) {
-            progressEl.textContent = job.progress;
-          }
-
-          if (job.status === 'done') {
-            isAnalyzing = false;
-            processingIndicator.style.display = 'none';
-            resetAnalyzeBtn();
-            sessionStorage.removeItem('roadvision_active_job');
-
-            if (!job.detections || job.detections.length === 0) {
-              showNoDetections();
-              sessionStorage.removeItem('roadvision_last_results');
-              return;
-            }
-
-            console.log(`Received ${job.detections.length} detections (background job complete)`);
-            try {
-              sessionStorage.setItem('roadvision_last_results', JSON.stringify(job.detections));
-            } catch (e) { /* ignore */ }
-
-            await updateDashboardStats();
-            displayResults(job.detections);
-            return;
-
-          } else if (job.status === 'error') {
-            isAnalyzing = false;
-            processingIndicator.style.display = 'none';
-            resetAnalyzeBtn();
-            sessionStorage.removeItem('roadvision_active_job');
-            throw new Error(job.error || 'Unknown analysis error');
-          }
-          // else: still processing — loop again
-        } catch (pollErr) {
-          console.warn('Poll error (will retry):', pollErr.message);
-          // Don't break — keep trying in case of transient network issue
-        }
-      }
-    }
-
-    // On page load: check if there's an active background job to resume polling
-    (async function resumePendingJob() {
-      const pendingJobId = sessionStorage.getItem('roadvision_active_job');
-      if (!pendingJobId) return;
-
-      console.log('Resuming polling for pending job:', pendingJobId);
-      isAnalyzing = true;
-      analyzeBtn.disabled = true;
-      analyzeBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">hourglass_top</span> Analyzing...';
-      processingIndicator.style.display = 'flex';
-      const progressText = processingIndicator.querySelector('p') || processingIndicator;
-
-      try {
-        await _pollForResults(pendingJobId, progressText);
-      } catch (err) {
-        console.error('Resume failed:', err);
-        sessionStorage.removeItem('roadvision_active_job');
-        isAnalyzing = false;
-        processingIndicator.style.display = 'none';
-        resetAnalyzeBtn();
-      }
-    })();
 
 
     function resetAnalyzeBtn() {
