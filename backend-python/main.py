@@ -160,118 +160,59 @@ async def startup_check():
     logger.info("=" * 60)
 
 
-# ---- Analyze Video Endpoint ----
-@app.post("/analyze-video")
-async def analyze_video(video: UploadFile = File(...)):
-    """
-    Analyze an uploaded traffic video for illegal number plates.
+# ---- Background Video Analysis Job System ----
+import threading
+import uuid as _uuid
 
-    Pipeline:
-      1. Extract every 5th frame from the video
-      2. YOLOv8 plate detector → bounding boxes
-      3. Geometric filter → plate crop → preprocessing (160×40)
-      4. PaddleOCR/CRNN → plate text (confidence ≥ 0.6)
-      5. Indian RTO format validation → violation detection
-      6. Return structured JSON results
+# In-memory job store: job_id -> {status, progress, detections, error}
+_analysis_jobs: dict = {}
 
-    Accepts: MP4, MOV, WEBM video files.
-    Returns: JSON with detection results.
-    """
-    logger.info(f"Received video upload: {video.filename} ({video.content_type})")
 
-    # Validate file type
-    allowed_types = {
-        'video/mp4', 'video/webm', 'video/quicktime',
-        'video/mov', 'video/x-msvideo',
-    }
-    if video.content_type and video.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported video format: {video.content_type}. Use MP4, MOV, or WEBM.",
-        )
-
-    temp_path = None
+def _run_analysis_job(job_id: str, temp_path: str):
+    """Run the full YOLO+OCR+validation pipeline in a background thread."""
     try:
-        # Save uploaded video to temp file
-        file_bytes = await video.read()
-        if len(file_bytes) == 0:
-            raise HTTPException(status_code=400, detail="Empty video file.")
+        _analysis_jobs[job_id]['status'] = 'processing'
+        _analysis_jobs[job_id]['progress'] = 'Running YOLO detection...'
 
-        ext = os.path.splitext(video.filename or 'video.mp4')[1] or '.mp4'
-        temp_path = save_upload_to_temp(file_bytes, suffix=ext)
-        logger.info(f"Saved to temp: {temp_path} ({len(file_bytes)} bytes)")
-
-        # Step 1: Process video frames — every 3rd frame (more sampling = better stabilization)
-        logger.info("Starting YOLO + PaddleOCR pipeline...")
         raw_detections = process_video(temp_path, frame_interval=3)
-        logger.info(f"Raw plate detections from YOLO: {len(raw_detections)}")
+        logger.info(f"Job {job_id}: {len(raw_detections)} raw detections")
 
         if not raw_detections:
-            logger.info("No plate candidates detected by YOLO.")
-            return JSONResponse(content={"detections": []})
+            _analysis_jobs[job_id].update(status='done', progress='Complete', detections=[])
+            return
 
-        # Step 2: Read plate text via OCR + validate format
-        # Use frame-level aggregation: group by normalized plate, select highest confidence
-        plate_detections = {}  # normalized_plate -> list of detection entries
+        _analysis_jobs[job_id]['progress'] = f'Reading {len(raw_detections)} plates via OCR...'
 
-        logger.info(f"Processing {len(raw_detections)} raw detections...")
-
+        plate_detections = {}
         for idx, det in enumerate(raw_detections):
-            # Read plate text using PaddleOCR/CRNN/Tesseract - pass both raw and preprocessed
             plate_text = read_plate(det['raw_crop'], det['crop'])
             if not plate_text:
-                logger.debug(f"Detection {idx}: OCR failed or returned empty")
                 continue
-
             normalized = normalize_plate(plate_text)
             if len(normalized) < 6:
-                logger.debug(f"Detection {idx}: Plate too short after normalization: '{normalized}'")
                 continue
 
-            # Validate against Indian RTO rules
             validation = validate_plate(plate_text, det.get('raw_crop'))
-
-            logger.info(
-                f"Detection {idx}: '{validation.detected_plate}' → "
-                f"Violation: {validation.violation or 'None'}"
-            )
-
-            # Calculate combined confidence (YOLO + OCR) - pass both images
             yolo_conf = det['confidence']
             ocr_conf = get_read_confidence(det['raw_crop'], det['crop'])
-            
-            # Base combined confidence with weighted average (YOLO: 0.4, OCR: 0.6)
             base_conf = (yolo_conf * 0.4 + ocr_conf * 0.6)
-            
-            # Apply confidence boost for plates matching Indian format
-            # Valid format plates (matching PLATE_PATTERN) get a boost to reach >= 0.50 threshold
-            # This applies even to unregistered vehicles, as long as the format is correct
+
             format_boost = 1.0
             from rules.plate_rules import PLATE_PATTERN
-            # Use detected_plate as fallback if correct_plate is None (legal plates)
-            plate_for_format_check = validation.correct_plate or validation.detected_plate
-            if PLATE_PATTERN.match(plate_for_format_check):
-                # Matches Indian RTO format - apply boost
+            plate_for_check = validation.correct_plate or validation.detected_plate
+            if PLATE_PATTERN.match(plate_for_check):
                 format_boost = 1.15
-            
-            # Calculate combined confidence and cap at 1.0
-            combined_conf = min(
-                1.0,
-                round(
-                    base_conf * format_boost * validation.confidence_modifier,
-                    2,
-                )
-            )
 
-            # Encode plate crop image as base64 for frontend evidence display
+            combined_conf = min(1.0, round(base_conf * format_boost * validation.confidence_modifier, 2))
+
             plate_image_b64 = None
             try:
                 if det.get('raw_crop') is not None and det['raw_crop'].size > 0:
                     import base64
                     _, buf = cv2.imencode('.jpg', det['raw_crop'], [cv2.IMWRITE_JPEG_QUALITY, 85])
                     plate_image_b64 = 'data:image/jpeg;base64,' + base64.b64encode(buf).decode('utf-8')
-            except Exception as enc_err:
-                logger.warning(f"Could not encode plate crop: {enc_err}")
+            except Exception:
+                pass
 
             detection_entry = {
                 "detected_plate": validation.detected_plate,
@@ -280,98 +221,107 @@ async def analyze_video(video: UploadFile = File(...)):
                 "font_anomaly": validation.font_anomaly,
                 "confidence": combined_conf,
                 "frame": det['frame_number'],
-                "bbox": det['bbox'],  # [x, y, width, height]
-                "plate_image": plate_image_b64,  # base64 JPEG crop for evidence
+                "bbox": det['bbox'],
+                "plate_image": plate_image_b64,
                 "source": "video_analysis",
             }
-            
-            # Add vehicle registration info if available
             if validation.vehicle_info:
                 detection_entry["vehicle_info"] = validation.vehicle_info
 
-
-            # Group by normalized plate text for aggregation
             if normalized not in plate_detections:
                 plate_detections[normalized] = []
             plate_detections[normalized].append(detection_entry)
 
-        # Step 3: Stabilization + Frame-level aggregation with fuzzy matching
-        # Only keep plates seen in ≥2 frames (stabilization from Deep Dive doc)
-        # Then group similar plates using Levenshtein distance
-        MIN_FRAMES_REQUIRED = 2  # Plate must appear in at least 2 frames to be real
+            if idx % 10 == 0:
+                _analysis_jobs[job_id]['progress'] = f'Processing detection {idx+1}/{len(raw_detections)}...'
+
+        # Stabilization + deduplication
+        _analysis_jobs[job_id]['progress'] = 'Stabilizing and deduplicating...'
+        MIN_FRAMES_REQUIRED = 2
         detections: List[dict] = []
         processed_plates = set()
-        
-        for normalized_plate, detection_list in plate_detections.items():
-            # ── Stabilization: reject plates seen in only 1 frame ──
-            if len(detection_list) < MIN_FRAMES_REQUIRED:
-                logger.debug(
-                    f"Stabilization: skipping '{normalized_plate}' — only seen in "
-                    f"{len(detection_list)} frame(s), need {MIN_FRAMES_REQUIRED}+"
-                )
-                continue
 
-            # Check if this plate is similar to any already processed plate
+        for normalized_plate, detection_list in plate_detections.items():
+            if len(detection_list) < MIN_FRAMES_REQUIRED:
+                continue
             is_duplicate = False
             for processed in processed_plates:
-                # Calculate Levenshtein distance
                 distance = _levenshtein_distance(normalized_plate, processed)
-                # Tighter distance (≤2) to avoid false merges
                 if distance <= 2 and abs(len(normalized_plate) - len(processed)) <= 2:
-                    logger.debug(f"Skipping duplicate: '{normalized_plate}' ≈ '{processed}' (distance: {distance})")
                     is_duplicate = True
                     break
-            
             if not is_duplicate:
-                # Select the detection with highest confidence
                 best_detection = max(detection_list, key=lambda d: d['confidence'])
-                
-                # ── Confidence boost for multi-frame stability ──
-                # More frames seen = more confident the plate is real
                 frames_seen = len(detection_list)
                 stability_boost = min(1.0, best_detection['confidence'] + (frames_seen - 1) * 0.05)
                 best_detection['confidence'] = round(stability_boost, 2)
-                best_detection['frames_seen'] = frames_seen  # Include for frontend display
-                
+                best_detection['frames_seen'] = frames_seen
                 detections.append(best_detection)
                 processed_plates.add(normalized_plate)
-
-                # Save the final stabilized + deduplicated detection to DB
                 try:
                     db.add_detection('CAM-001', best_detection)
-                except Exception as db_err:
-                    logger.warning(f"DB save failed for stabilized video detection: {db_err}")
-                
-                logger.debug(
-                    f"Plate '{normalized_plate}': seen in {frames_seen} frames, "
-                    f"selected frame {best_detection['frame']} with confidence {best_detection['confidence']}"
-                )
+                except Exception:
+                    pass
 
-        # Sort by frame number
         detections.sort(key=lambda d: d.get('frame', 0))
+        logger.info(f"Job {job_id}: {len(detections)} final detections")
+        _analysis_jobs[job_id].update(status='done', progress='Complete', detections=detections)
 
-        logger.info(
-            f"Final results: {len(detections)} unique detections "
-            f"(after stabilization + fuzzy dedup), "
-            f"{sum(1 for d in detections if d['violation'])} violations"
-        )
-
-        return JSONResponse(content={"detections": detections})
-
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Pipeline error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Video analysis failed: {str(e)}",
-        )
+        logger.error(f"Job {job_id} failed: {e}", exc_info=True)
+        _analysis_jobs[job_id].update(status='error', error=str(e))
     finally:
         if temp_path and os.path.exists(temp_path):
             try:
                 os.unlink(temp_path)
             except OSError:
                 pass
+
+
+@app.post("/analyze-video")
+async def analyze_video(video: UploadFile = File(...)):
+    """
+    Start background video analysis. Returns job_id immediately.
+    Frontend polls /api/analysis-status/{job_id} for progress and results.
+    """
+    logger.info(f"Received video upload: {video.filename} ({video.content_type})")
+
+    allowed_types = {'video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'video/x-msvideo'}
+    if video.content_type and video.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {video.content_type}")
+
+    file_bytes = await video.read()
+    if len(file_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Empty video file.")
+
+    ext = os.path.splitext(video.filename or 'video.mp4')[1] or '.mp4'
+    temp_path = save_upload_to_temp(file_bytes, suffix=ext)
+
+    job_id = str(_uuid.uuid4())[:8]
+    _analysis_jobs[job_id] = {
+        'status': 'queued', 'progress': 'Starting analysis...',
+        'detections': [], 'error': None,
+    }
+
+    thread = threading.Thread(target=_run_analysis_job, args=(job_id, temp_path), daemon=True)
+    thread.start()
+    logger.info(f"Started background analysis job: {job_id}")
+
+    return JSONResponse(content={"job_id": job_id, "message": "Analysis started in background"})
+
+
+@app.get("/api/analysis-status/{job_id}")
+async def get_analysis_status(job_id: str):
+    """Poll for background video analysis status and results."""
+    if job_id not in _analysis_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job = _analysis_jobs[job_id]
+    return JSONResponse(content={
+        "status": job['status'],
+        "progress": job['progress'],
+        "detections": job.get('detections', []) if job['status'] == 'done' else [],
+        "error": job.get('error'),
+    })
 
 
 
