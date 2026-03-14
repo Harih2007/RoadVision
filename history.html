@@ -67,7 +67,7 @@
                   <th>Violation</th>
                   <th>Vehicle Status</th>
                   <th>Confidence</th>
-                  <th>Frame</th>
+                  <th>Time</th>
                   <th style="text-align:right">Actions</th>
                 </tr>
               </thead>
@@ -155,6 +155,13 @@
           const fontBadge = det.font_anomaly ? 
             '<span class="badge warning" style="font-size:10px; margin-left:4px;">Non-Standard Font</span>' : '';
 
+          const timeStr = det.timestamp 
+            ? new Date(det.timestamp).toLocaleString('en-IN', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+              })
+            : 'Unknown';
+
           return `
             <tr>
               <td><span class="plate-number">${det.detected_plate}</span>${fontBadge}</td>
@@ -162,7 +169,7 @@
               <td><span class="badge ${badgeClass}">${violationText}</span></td>
               <td><span class="badge ${vehicleBadgeClass}">${vehicleStatus}</span></td>
               <td style="color:var(--success); font-weight:600;">${confidence}%</td>
-              <td style="color:var(--text-muted);">Frame ${det.frame}</td>
+              <td style="color:var(--text-muted); font-size:13px; white-space:nowrap;">${timeStr}</td>
               <td style="text-align:right">
                 <button class="icon-btn" onclick="viewDetails('${det.detected_plate}', '${det.correct_plate || ''}', '${violationText}', ${confidence}, ${JSON.stringify(det.vehicle_info || {}).replace(/"/g, '&quot;')}, '${det.plate_image || ''}')">
                   <span class="material-symbols-outlined">visibility</span>
