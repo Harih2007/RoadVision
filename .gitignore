@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Database files (user data - DO NOT COMMIT)
+*.db
+*.sqlite
+*.sqlite3
+backend-python/roadvision.db
+backend-python/registration_db.sqlite
+
+# Debug output
+backend-python/debug_plates/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test files
+test_*.mp4
+test_*.png
+test_*.jpg
+
+# Temporary files
+*.tmp
+*.temp
