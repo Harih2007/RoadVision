@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RoadVision — Select Camera</title>
+  <title>RoadVision — Operator Sign In</title>
   <meta name="description" content="Sign in to RoadVision — AI-powered traffic analytics and illegal plate detection system." />
   <link rel="stylesheet" href="styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
@@ -13,164 +13,315 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      overflow: hidden;
+      background-color: var(--color-bg-page, #F3F4F8);
+      overflow-y: auto;
+      padding: 24px 16px;
     }
 
     /* Ambient Background Orbs */
     .ambient-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(80px);
+      filter: blur(90px);
       pointer-events: none;
       z-index: 1;
     }
 
     .orb-1 {
-      width: 400px;
-      height: 400px;
-      background: rgba(99, 102, 241, 0.15);
-      top: 10%;
-      left: 15%;
+      width: 440px;
+      height: 440px;
+      background: rgba(108, 92, 231, 0.14);
+      top: 5%;
+      left: 12%;
     }
 
     .orb-2 {
-      width: 450px;
-      height: 450px;
-      background: rgba(16, 185, 129, 0.12);
-      bottom: 10%;
-      right: 15%;
+      width: 460px;
+      height: 460px;
+      background: rgba(16, 185, 129, 0.1);
+      bottom: 5%;
+      right: 12%;
     }
 
-    /* ---------- Login Card ---------- */
+    /* ---------- Login Wrapper & Card ---------- */
     .login-wrapper {
       position: relative;
       z-index: 10;
       width: 100%;
-      max-width: 480px;
-      padding: 20px;
+      max-width: 500px;
     }
 
     .login-card {
-      background: rgba(255, 255, 255, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.95);
-      border-radius: var(--radius-xl);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: #FFFFFF;
+      border: 1px solid var(--border-color, #E2E8F0);
+      border-radius: var(--radius-xl, 18px);
       padding: 36px 32px;
-      box-shadow: 0 20px 50px -10px rgba(15, 23, 42, 0.08), 0 8px 20px -4px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      box-shadow: 0 20px 50px -10px rgba(15, 23, 42, 0.08), 0 8px 20px -4px rgba(15, 23, 42, 0.04);
     }
 
-    /* ---------- Brand ---------- */
+    /* ---------- Brand Lockup ---------- */
     .login-brand {
       display: flex;
       align-items: center;
       gap: 14px;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
 
     .login-brand-icon {
       width: 46px;
       height: 46px;
-      border-radius: var(--radius-md);
-      background: linear-gradient(135deg, var(--primary), #6366F1);
+      border-radius: var(--radius-md, 10px);
+      background: var(--color-primary, #6C5CE7);
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
       font-size: 24px;
-      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
+      box-shadow: 0 4px 16px var(--color-primary-glow, rgba(108, 92, 231, 0.25));
     }
 
     .login-brand-text h1 {
       font-size: 22px;
       font-weight: 800;
-      color: var(--text-primary);
+      color: var(--color-text-primary, #0F172A);
       letter-spacing: -0.4px;
+      line-height: 1.15;
     }
 
     .login-brand-text p {
       font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
+      font-weight: 700;
+      color: var(--color-text-muted, #64748B);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.6px;
       margin-top: 2px;
     }
 
     /* ---------- Heading ---------- */
     .login-heading {
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .login-heading h2 {
       font-size: 18px;
       font-weight: 800;
-      color: var(--text-primary);
+      color: var(--color-text-primary, #0F172A);
       letter-spacing: -0.3px;
     }
 
     .login-heading p {
       font-size: 13px;
-      color: var(--text-secondary);
+      color: var(--color-text-muted, #64748B);
       margin-top: 4px;
     }
 
-    /* Camera Selection Buttons */
-    .camera-select-btn {
-      width: 100%;
+    /* ---------- Role Selection Cards ---------- */
+    .role-cards-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .role-card {
       display: flex;
       align-items: center;
       gap: 14px;
       padding: 14px 16px;
       background: #FFFFFF;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      color: var(--text-primary);
+      border: 1.5px solid var(--border-color, #E2E8F0);
+      border-radius: var(--radius-lg, 14px);
       cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
-      transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
       text-align: left;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
     }
 
-    .camera-select-btn:hover {
-      background: #FFFFFF;
-      border-color: var(--primary);
-      box-shadow: 0 8px 20px -4px rgba(79, 70, 229, 0.15);
-      transform: translateY(-2px);
+    .role-card:hover {
+      border-color: var(--color-primary, #6C5CE7);
+      background: #FAFAFC;
+      transform: translateY(-1px);
     }
 
-    .camera-select-btn .cam-icon-box {
-      width: 38px;
-      height: 38px;
-      border-radius: var(--radius-md);
-      background: rgba(79, 70, 229, 0.08);
+    .role-card.selected {
+      border-color: var(--color-primary, #6C5CE7);
+      background: var(--color-primary-tint, rgba(108, 92, 231, 0.08));
+      box-shadow: 0 0 0 1px var(--color-primary, #6C5CE7);
+    }
+
+    .role-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md, 10px);
+      background: #F1F5F9;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--primary);
+      color: var(--color-text-muted, #64748B);
+      font-size: 20px;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .role-card.selected .role-card-icon {
+      background: var(--color-primary, #6C5CE7);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px var(--color-primary-glow, rgba(108, 92, 231, 0.3));
+    }
+
+    .role-card-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .role-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text-primary, #0F172A);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .role-card-desc {
+      font-size: 12px;
+      color: var(--color-text-muted, #64748B);
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+
+    .role-card-check {
+      font-size: 20px;
+      color: var(--color-primary, #6C5CE7);
+      opacity: 0;
+      transform: scale(0.6);
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      margin-left: auto;
       flex-shrink: 0;
     }
 
-    .camera-select-btn .material-symbols-outlined {
-      font-size: 20px;
+    .role-card.selected .role-card-check {
+      opacity: 1;
+      transform: scale(1);
     }
 
-    .camera-select-btn .cam-meta-name {
+    /* ---------- Password Field Container ---------- */
+    .password-section {
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+      margin-bottom: 20px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .password-label {
+      display: block;
+      font-size: 11.5px;
       font-weight: 700;
+      color: var(--color-text-muted, #64748B);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .password-input-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .password-input-wrapper input {
+      width: 100%;
+      padding: 12px 44px 12px 14px;
+      background: #FAFAFC;
+      border: 1px solid var(--border-color, #E2E8F0);
+      border-radius: var(--radius-md, 10px);
       font-size: 14px;
-      color: var(--text-primary);
+      font-family: inherit;
+      color: var(--color-text-primary, #0F172A);
+      box-sizing: border-box;
+      outline: none;
+      transition: all 0.2s ease;
     }
 
-    .camera-select-btn .cam-meta-loc {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 1px;
+    .password-input-wrapper input:focus {
+      background: #FFFFFF;
+      border-color: var(--color-primary, #6C5CE7);
+      box-shadow: 0 0 0 3px var(--color-primary-glow, rgba(108, 92, 231, 0.2));
     }
 
-    .camera-select-btn .cam-status-icon {
-      margin-left: auto;
-      color: var(--success);
-      font-size: 20px;
+    .password-toggle-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--color-text-muted, #64748B);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
+    .password-toggle-btn:hover {
+      color: var(--color-primary, #6C5CE7);
+    }
+
+    /* ---------- Error Banner ---------- */
+    .login-error {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: var(--radius-md, 10px);
+      color: #B91C1C;
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .login-error.show {
+      display: flex;
+    }
+
+    /* ---------- Submit Button ---------- */
+    .btn-sign-in {
+      width: 100%;
+      padding: 13px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: var(--radius-md, 10px);
+      background: var(--color-primary, #6C5CE7);
+      color: #FFFFFF;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px var(--color-primary-glow, rgba(108, 92, 231, 0.25));
+    }
+
+    .btn-sign-in:hover:not(:disabled) {
+      background: var(--color-primary-hover, #5A4BD8);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px var(--color-primary-glow, rgba(108, 92, 231, 0.35));
+    }
+
+    .btn-sign-in:disabled {
+      background: #CBD5E1;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
     }
 
     /* ---------- Status Bar ---------- */
@@ -181,14 +332,14 @@
       gap: 8px;
       margin-top: 24px;
       padding-top: 18px;
-      border-top: 1px solid var(--border-light);
+      border-top: 1px solid var(--border-light, #F1F5F9);
     }
 
     .status-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--success);
+      background: var(--color-success, #10B981);
       box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
       flex-shrink: 0;
       animation: pulse 2s infinite;
@@ -197,32 +348,15 @@
     .login-status-bar span {
       font-size: 11px;
       font-weight: 600;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
+      color: var(--color-text-muted, #64748B);
+      font-family: var(--font-mono, monospace);
       letter-spacing: 0.5px;
     }
-
-    /* ---------- Error State ---------- */
-    .login-error {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: #FEF2F2;
-      border: 1px solid #FECACA;
-      border-radius: var(--radius-md);
-      color: var(--alert-text);
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 16px;
-    }
-
-    .login-error.show { display: flex; }
   </style>
 </head>
 <body>
 
-  <!-- Ambient Light Orbs for Morphism -->
+  <!-- Ambient Background Orbs -->
   <div class="ambient-orb orb-1"></div>
   <div class="ambient-orb orb-2"></div>
 
@@ -242,101 +376,233 @@
 
       <!-- Heading -->
       <div class="login-heading">
-        <h2>Select Camera</h2>
-        <p>Choose an active camera node to open surveillance dashboard</p>
+        <h2>Select Role</h2>
+        <p>Choose your authorized operational role to proceed</p>
       </div>
 
-      <!-- Error Banner -->
-      <div class="login-error" id="loginError">
-        <span class="material-symbols-outlined" style="font-size:18px">error</span>
-        <span id="loginErrorText">Please select a camera to continue.</span>
-      </div>
+      <!-- Role Selection Cards -->
+      <div class="role-cards-container">
+        <!-- Field Operator -->
+        <div class="role-card" data-role="Field Operator">
+          <div class="role-card-icon">
+            <span class="material-symbols-outlined">badge</span>
+          </div>
+          <div class="role-card-text">
+            <div class="role-card-title">Field Operator</div>
+            <div class="role-card-desc">View detections, log violations, no PII access</div>
+          </div>
+          <span class="material-symbols-outlined role-card-check">check_circle</span>
+        </div>
 
-      <!-- Camera Selection -->
-      <div class="login-form" id="cameraSelection">
-        <div class="form-group" style="display:flex; flex-direction:column; gap:10px;">
-          <button class="camera-select-btn" data-camera="1">
-            <div class="cam-icon-box">
-              <span class="material-symbols-outlined">videocam</span>
-            </div>
-            <div>
-              <div class="cam-meta-name">Camera 1</div>
-              <div class="cam-meta-loc">Main Expressway North</div>
-            </div>
-            <span class="material-symbols-outlined cam-status-icon">check_circle</span>
-          </button>
-          
-          <button class="camera-select-btn" data-camera="2">
-            <div class="cam-icon-box">
-              <span class="material-symbols-outlined">videocam</span>
-            </div>
-            <div>
-              <div class="cam-meta-name">Camera 2</div>
-              <div class="cam-meta-loc">City Center Junction</div>
-            </div>
-            <span class="material-symbols-outlined cam-status-icon">check_circle</span>
-          </button>
-          
-          <button class="camera-select-btn" data-camera="3">
-            <div class="cam-icon-box">
-              <span class="material-symbols-outlined">videocam</span>
-            </div>
-            <div>
-              <div class="cam-meta-name">Camera 3</div>
-              <div class="cam-meta-loc">Highway Toll Plaza</div>
-            </div>
-            <span class="material-symbols-outlined cam-status-icon">check_circle</span>
-          </button>
-          
-          <button class="camera-select-btn" data-camera="4">
-            <div class="cam-icon-box">
-              <span class="material-symbols-outlined">videocam</span>
-            </div>
-            <div>
-              <div class="cam-meta-name">Camera 4</div>
-              <div class="cam-meta-loc">Airport Road Entry</div>
-            </div>
-            <span class="material-symbols-outlined cam-status-icon">check_circle</span>
-          </button>
+        <!-- Reviewer / Supervisor -->
+        <div class="role-card" data-role="Reviewer/Supervisor">
+          <div class="role-card-icon">
+            <span class="material-symbols-outlined">rate_review</span>
+          </div>
+          <div class="role-card-text">
+            <div class="role-card-title">Reviewer / Supervisor</div>
+            <div class="role-card-desc">Review Queue access, PII reveal with audit log</div>
+          </div>
+          <span class="material-symbols-outlined role-card-check">check_circle</span>
+        </div>
+
+        <!-- Admin -->
+        <div class="role-card" data-role="Admin">
+          <div class="role-card-icon">
+            <span class="material-symbols-outlined">admin_panel_settings</span>
+          </div>
+          <div class="role-card-text">
+            <div class="role-card-title">Admin</div>
+            <div class="role-card-desc">Full access, camera management, audit log viewer</div>
+          </div>
+          <span class="material-symbols-outlined role-card-check">check_circle</span>
         </div>
       </div>
+
+      <!-- Password Section (Revealed on role select) -->
+      <div class="password-section" id="passwordSection">
+        <label class="password-label" id="passwordLabel">Enter Password</label>
+        <div class="password-input-wrapper">
+          <input type="password" id="passwordInput" placeholder="Enter password..." autocomplete="current-password" />
+          <button type="button" class="password-toggle-btn" id="passwordToggleBtn" title="Show / Hide Password">
+            <span class="material-symbols-outlined" id="passwordToggleIcon">visibility</span>
+          </button>
+        </div>
+
+        <!-- Inline Error Banner -->
+        <div class="login-error" id="loginError">
+          <span class="material-symbols-outlined" style="font-size:18px">error</span>
+          <span id="loginErrorText">Incorrect password for this role</span>
+        </div>
+      </div>
+
+      <!-- Sign In Button -->
+      <button type="button" class="btn-sign-in" id="signInBtn" disabled>
+        <span class="material-symbols-outlined" style="font-size:18px;">login</span>
+        Sign In
+      </button>
 
       <!-- Status Bar -->
       <div class="login-status-bar">
         <span class="status-dot"></span>
-        <span>SEC_NODE_01: ONLINE • AES-256-GCM ENCRYPTED</span>
+        <span>DEMO AUTH • Role-based session (not production-grade)</span>
       </div>
 
     </div>
   </div>
 
+  <script src="components/audit-log.js"></script>
   <script>
-    // ---- Camera Selection Logic ----
-    const errBox = document.getElementById('loginError');
-    const cameraButtons = document.querySelectorAll('.camera-select-btn');
+    /**
+     * =========================================================================
+     * DEMO AUTHENTICATION CREDENTIALS (DEMO-ONLY — NOT PRODUCTION AUTH)
+     * =========================================================================
+     * In production, RoadVision delegates authentication to an OAuth 2.0 / OIDC
+     * identity provider with PKCE and MFA tokens, issuing signed JWTs via TLS.
+     */
+    const DEMO_CREDENTIALS = {
+      'Field Operator': 'operator123',
+      'Reviewer/Supervisor': 'reviewer123',
+      'Admin': 'admin123'
+    };
 
-    cameraButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const cameraId = btn.dataset.camera;
-        const cameraName = btn.querySelector('.cam-meta-name').textContent;
-        const cameraLocation = btn.querySelector('.cam-meta-loc').textContent;
-        
-        // Save camera selection to localStorage
-        localStorage.setItem('roadvision_camera', JSON.stringify({
-          id: `CAM-00${cameraId}`,
-          name: cameraName,
-          location: cameraLocation,
-          resolution: '1080p',
-          latitude: '',
-          longitude: '',
-          address: '',
-          accuracy: '',
-        }));
-        
-        // Redirect to dashboard
-        window.location.href = 'index.html';
+    let selectedRole = null;
+
+    const roleCards = document.querySelectorAll('.role-card');
+    const passwordSection = document.getElementById('passwordSection');
+    const passwordLabel = document.getElementById('passwordLabel');
+    const passwordInput = document.getElementById('passwordInput');
+    const passwordToggleBtn = document.getElementById('passwordToggleBtn');
+    const passwordToggleIcon = document.getElementById('passwordToggleIcon');
+    const signInBtn = document.getElementById('signInBtn');
+    const loginError = document.getElementById('loginError');
+    const loginErrorText = document.getElementById('loginErrorText');
+
+    // Check URL reason parameter (e.g. idle timeout)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reason') === 'timeout') {
+      loginErrorText.textContent = 'Session Expired: Re-authenticate to access system.';
+      loginError.classList.add('show');
+    }
+
+    // Role Selection Handler
+    roleCards.forEach(card => {
+      card.addEventListener('click', () => {
+        roleCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedRole = card.dataset.role;
+
+        // Reveal password field and update label
+        passwordSection.style.display = 'block';
+        passwordLabel.textContent = `Enter Password for ${selectedRole}`;
+        passwordInput.focus();
+
+        // Clear error when switching role
+        loginError.classList.remove('show');
+
+        validateForm();
       });
     });
+
+    // Password Show/Hide Toggle
+    passwordToggleBtn.addEventListener('click', () => {
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        passwordToggleIcon.textContent = 'visibility_off';
+      } else {
+        passwordInput.type = 'password';
+        passwordToggleIcon.textContent = 'visibility';
+      }
+    });
+
+    // Live validation for Sign In button
+    function validateForm() {
+      const pwd = passwordInput.value.trim();
+      signInBtn.disabled = !(selectedRole && pwd.length > 0);
+    }
+
+    passwordInput.addEventListener('input', () => {
+      loginError.classList.remove('show');
+      validateForm();
+    });
+
+    // Enter key submits form
+    passwordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !signInBtn.disabled) {
+        handleSignIn();
+      }
+    });
+
+    signInBtn.addEventListener('click', handleSignIn);
+
+    function handleSignIn() {
+      if (!selectedRole) return;
+      const pwd = passwordInput.value.trim();
+      const expectedPwd = DEMO_CREDENTIALS[selectedRole];
+
+      if (pwd !== expectedPwd) {
+        loginErrorText.textContent = 'Incorrect password for this role';
+        loginError.classList.add('show');
+        passwordInput.focus();
+        return;
+      }
+
+      // Successful Login
+      loginError.classList.remove('show');
+
+      // 1. Store Selected Role and Mock Session
+      sessionStorage.setItem('roadvision_role', selectedRole);
+
+      const operatorNames = {
+        'Field Operator': 'Field Constable A. Kumar',
+        'Reviewer/Supervisor': 'Supervisor R. Sharma',
+        'Admin': 'Admin Officer V. Roy'
+      };
+
+      const mockJwtHeader = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+      const mockJwtPayload = btoa(JSON.stringify({
+        sub: "OP-" + Math.floor(1000 + Math.random() * 9000),
+        name: operatorNames[selectedRole],
+        role: selectedRole,
+        iss: "roadvision-auth-gateway",
+        exp: Math.floor(Date.now() / 1000) + (15 * 60)
+      }));
+      const mockJwtSignature = "mock_sig_" + Math.random().toString(36).substr(2, 10);
+      const mockJwtToken = `${mockJwtHeader}.${mockJwtPayload}.${mockJwtSignature}`;
+
+      const userSession = {
+        token: mockJwtToken,
+        id: "OP-" + Math.floor(1000 + Math.random() * 9000),
+        name: operatorNames[selectedRole],
+        role: selectedRole,
+        loggedInAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString()
+      };
+
+      sessionStorage.setItem('roadvision_session', JSON.stringify(userSession));
+
+      // 2. Ensure default Camera 1 context is set in localStorage
+      if (!localStorage.getItem('roadvision_camera')) {
+        localStorage.setItem('roadvision_camera', JSON.stringify({
+          id: 'CAM-001',
+          name: 'Camera 1',
+          location: 'Main Expressway North',
+          resolution: '1080p'
+        }));
+      }
+
+      // 3. Record Audit Log Event
+      if (window.RoadVisionAudit) {
+        window.RoadVisionAudit.record('LOGIN', userSession.id, {
+          role: selectedRole,
+          name: userSession.name
+        });
+      }
+
+      // 4. Redirect to Dashboard
+      const redirectPage = urlParams.get('redirect') || 'index.html';
+      window.location.href = redirectPage;
+    }
   </script>
 </body>
 </html>

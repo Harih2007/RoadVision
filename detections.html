@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RoadVision — Detections</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=orient" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 </head>
 <body>
@@ -19,13 +19,24 @@
 
       <!-- Main Content -->
       <div class="main-content">
-        <!-- Page Intro -->
-        <div class="section-header" style="margin-bottom:24px;">
-          <h2>Illegal Plate Detections</h2>
-          <span class="badge alert" id="flaggedCount">
-            <span class="material-symbols-outlined" style="font-size:14px">warning</span>
-            <span id="flaggedNumber">0</span> Flagged
-          </span>
+        <!-- Page Intro & Scoped Search Bar -->
+        <div class="section-header" style="margin-bottom:20px; flex-wrap:wrap; gap:14px;">
+          <div>
+            <h2>Illegal Plate Detections</h2>
+            <p style="color:var(--text-muted); font-size:13px; margin-top:3px;">
+              Real-time feed of traffic rule violations and non-compliant number plates.
+            </p>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div class="scoped-search-box">
+              <span class="material-symbols-outlined">search</span>
+              <input type="text" id="detectionsSearchInput" placeholder="Search by plate number..." />
+            </div>
+            <span class="badge alert" id="flaggedCount">
+              <span class="material-symbols-outlined" style="font-size:14px">warning</span>
+              <span id="flaggedNumber">0</span> Flagged
+            </span>
+          </div>
         </div>
 
         <!-- Loading State -->
@@ -41,11 +52,11 @@
           <div style="font-size:48px; color:var(--text-muted); margin-bottom:16px;">
             <span class="material-symbols-outlined" style="font-size:48px;">search_off</span>
           </div>
-          <h3 style="margin-bottom:8px; color:var(--text);">No Detections Yet</h3>
-          <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">
+          <h3 style="margin-bottom:8px; color:var(--text);" id="emptyStateTitle">No Detections Yet</h3>
+          <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;" id="emptyStateMsg">
             Upload a video on the Dashboard to start detecting illegal plates.
           </p>
-          <a href="index.html" class="btn-primary" style="display:none">
+          <a href="index.html" class="btn-primary" style="display:none" id="emptyDashboardBtn">
             <span class="material-symbols-outlined" style="font-size:18px;">upload</span>
             Go to Dashboard
           </a>
@@ -71,63 +82,77 @@
     </div>
   </div>
 
+  <script src="components/audit-log.js"></script>
+  <script src="components/auth-guard.js"></script>
   <script src="components/loader.js"></script>
   <script src="components/evidence-store.js"></script>
   <script src="components/glare-hover.js"></script>
+  <script src="components/confidence-tier.js"></script>
+  <script src="components/vehicle-verification.js"></script>
   <script src="api-client.js"></script>
   <script>
     // ============ Load Real Detections ============
     const detectionsGrid = document.getElementById('detectionsGrid');
     const loadingState = document.getElementById('loadingState');
     const emptyState = document.getElementById('emptyState');
+    const emptyStateTitle = document.getElementById('emptyStateTitle');
+    const emptyStateMsg = document.getElementById('emptyStateMsg');
     const flaggedNumber = document.getElementById('flaggedNumber');
+    const searchInput = document.getElementById('detectionsSearchInput');
 
-    // Load detections from database (saved from dashboard upload or live monitoring)
-    async function loadDetections() {
-      try {
-        // Get only violations from database
-        const violations = await RoadVisionAPI.Detection.getAll(true);
+    let allViolations = [];
+
+    function renderCards(list) {
+      if (list.length === 0) {
+        detectionsGrid.style.display = 'none';
+        emptyState.style.display = 'block';
+        if (searchInput.value.trim()) {
+          emptyStateTitle.textContent = 'No Matching Plates Found';
+          emptyStateMsg.textContent = `No detection records matched "${searchInput.value.trim()}".`;
+        } else {
+          emptyStateTitle.textContent = 'No Detections Yet';
+          emptyStateMsg.textContent = 'Upload a video on the Dashboard to start detecting illegal plates.';
+        }
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      detectionsGrid.style.display = 'grid';
+
+      detectionsGrid.innerHTML = list.map((det, index) => {
+        const confidence = Math.round(det.confidence * 100);
+        const badgeClass = det.violation.includes('Tampered') ? 'alert' : 
+                          det.violation.includes('Spacing') ? 'warning' : 'alert';
         
-        if (violations.length === 0) {
-          loadingState.style.display = 'none';
-          emptyState.style.display = 'block';
-          flaggedNumber.textContent = '0';
-          return;
+        let plateImg = det.plate_image;
+        if (!plateImg) {
+          const evidence = getEvidenceByPlate(det.detected_plate);
+          plateImg = evidence && evidence.image ? evidence.image : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="60"%3E%3Crect width="200" height="60" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="Arial" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E';
         }
 
-        // Update count
-        flaggedNumber.textContent = violations.length;
+        const cardStatusClass = badgeClass === 'warning' ? 'card-status-warning' : 'card-status-alert';
 
-        // Render detection cards
-        detectionsGrid.innerHTML = violations.map((det, index) => {
-          const confidence = Math.round(det.confidence * 100);
-          const badgeClass = det.violation.includes('Tampered') ? 'alert' : 
-                            det.violation.includes('Spacing') ? 'warning' : 'alert';
-          
-          // Use plate_image from detection if available, otherwise try evidence store
-          let plateImg = det.plate_image;
-          if (!plateImg) {
-            const evidence = getEvidenceByPlate(det.detected_plate);
-            plateImg = evidence && evidence.image ? evidence.image : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="60"%3E%3Crect width="200" height="60" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="Arial" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E';
-          }
-
-          return `
-            <div class="detection-card">
-              <div class="detection-card-img" style="padding:0; overflow:hidden; background:#F8FAFC;">
-                <img src="${plateImg}" alt="Plate ${det.detected_plate}" style="width:100%; height:100%; object-fit:contain;" />
+        return `
+          <div class="detection-card ${cardStatusClass}">
+            <div class="detection-card-img" style="padding:0; overflow:hidden; background:#F8FAFC; position:relative;">
+              <img src="${plateImg}" alt="Plate ${det.detected_plate}" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+              <div style="display:none; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; color:var(--text-muted); gap:6px; position:absolute; top:0; left:0;">
+                <span class="material-symbols-outlined" style="font-size:32px; opacity:0.5;">image_not_supported</span>
+                <span style="font-size:11px; font-weight:600; opacity:0.7;">Image unavailable</span>
               </div>
-              <div class="detection-card-body">
-                <div class="detection-row">
-                  <span class="detection-label">Detected Plate</span>
-                  <span class="plate-number">${det.detected_plate}</span>
-                </div>
-                <div class="detection-row">
-                  <span class="detection-label">Correct Plate</span>
-                  <span class="detection-value">${det.correct_plate}</span>
-                </div>
-                <div class="detection-row">
-                  <span class="detection-label">Violation Type</span>
-                  <span class="badge ${badgeClass}">${det.violation}</span>
+            </div>
+            <div class="detection-card-body">
+              <div class="detection-row">
+                <span class="detection-label">Detected Plate</span>
+                <span class="plate-number">${det.detected_plate}</span>
+              </div>
+              <div class="detection-row">
+                <span class="detection-label">Correct Plate</span>
+                <span class="detection-value">${(det.correct_plate != null && det.correct_plate !== 'null') ? det.correct_plate : '<span style="color:var(--text-muted)">—</span>'}</span>
+              </div>
+              <div class="detection-row">
+                <span class="detection-label">Violation Type</span>
+                <span class="badge ${badgeClass}">${det.violation}</span>
                 </div>
                 ${det.vehicle_info ? `
                 <div class="detection-row">
@@ -151,11 +176,11 @@
                 ` : ''}
                 <div class="detection-row">
                   <span class="detection-label">Confidence</span>
-                  <span class="detection-value" style="color:var(--success); font-weight:600;">${confidence}%</span>
+                  <div>${confidenceBadge(confidence).html}</div>
                 </div>
                 <button class="btn-evidence" 
                         data-plate="${det.detected_plate}" 
-                        data-corrected="${det.correct_plate}" 
+                        data-corrected="${(det.correct_plate != null && det.correct_plate !== 'null') ? det.correct_plate : ''}" 
                         data-violation="${det.violation}" 
                         data-confidence="${confidence}">
                   <span class="material-symbols-outlined" style="font-size:16px">photo_camera</span> View Evidence
@@ -165,19 +190,44 @@
           `;
         }).join('');
 
-        // Show grid, hide loading
         loadingState.style.display = 'none';
-        detectionsGrid.style.display = 'grid';
-
-        // Wire up evidence buttons
         wireUpEvidenceButtons();
-
-      } catch (e) {
-        console.error('Error loading detections:', e);
-        loadingState.style.display = 'none';
-        emptyState.style.display = 'block';
       }
-    }
+
+      function filterDetections() {
+        const query = (searchInput.value || '').trim().toLowerCase();
+        if (!query) {
+          renderCards(allViolations);
+          flaggedNumber.textContent = allViolations.length;
+          return;
+        }
+
+        const filtered = allViolations.filter(det => {
+          const detPlate = (det.detected_plate || '').toLowerCase();
+          const corrPlate = (det.correct_plate || '').toLowerCase();
+          return detPlate.includes(query) || corrPlate.includes(query);
+        });
+
+        renderCards(filtered);
+        flaggedNumber.textContent = filtered.length;
+      }
+
+      searchInput.addEventListener('input', filterDetections);
+
+      async function loadDetections() {
+        try {
+          const violations = await RoadVisionAPI.Detection.getAll(true);
+          allViolations = violations || [];
+          flaggedNumber.textContent = allViolations.length;
+          loadingState.style.display = 'none';
+
+          renderCards(allViolations);
+        } catch (e) {
+          console.error('Error loading detections:', e);
+          loadingState.style.display = 'none';
+          emptyState.style.display = 'block';
+        }
+      }
 
     // ============ Evidence Modal Logic ============
     const evidenceModal = document.getElementById('evidenceModal');
@@ -194,7 +244,7 @@
 
     function wireUpEvidenceButtons() {
       document.querySelectorAll('.btn-evidence').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const plate = btn.dataset.plate;
           const corrected = btn.dataset.corrected;
           const violation = btn.dataset.violation;
@@ -212,6 +262,11 @@
             evidenceModalImg.style.display = 'none';
           }
 
+          // Lookup vehicle record from VAHAN mock database
+          const effectivePlate = (corrected && corrected !== 'null') ? corrected : plate;
+          const vRecord = await RoadVisionVehicle.lookupVehicleRecord(effectivePlate);
+          const vCardHTML = RoadVisionVehicle.buildVerificationCardHTML(vRecord, effectivePlate);
+
           evidenceModalDetails.innerHTML = `
             ${!imgSrc ? '<p style="padding:24px 0 8px; text-align:center; color:var(--text-muted); font-size:13px;"><span class="material-symbols-outlined" style="font-size:32px; display:block; margin-bottom:8px;">image_not_supported</span>No evidence frame captured yet.<br>Run video analysis on the Dashboard first.</p>' : ''}
             <div class="detection-row">
@@ -220,7 +275,7 @@
             </div>
             <div class="detection-row">
               <span class="detection-label">Correct Plate</span>
-              <span class="detection-value">${corrected}</span>
+              <span class="detection-value">${corrected && corrected !== 'null' ? corrected : '<span style="color:var(--text-muted)">—</span>'}</span>
             </div>
             <div class="detection-row">
               <span class="detection-label">Violation</span>
@@ -228,8 +283,9 @@
             </div>
             <div class="detection-row">
               <span class="detection-label">Confidence</span>
-              <span class="detection-value" style="color:var(--success); font-weight:600;">${confidence}%</span>
+              <div>${confidenceBadge(confidence).html}</div>
             </div>
+            ${vCardHTML}
           `;
           evidenceModal.classList.add('active');
         });

@@ -259,7 +259,7 @@ def get_detections(camera_id: str, limit: int = 100, violations_only: bool = Fal
 
 
 def get_detection_stats(camera_id: str) -> Dict:
-    """Get detection statistics for a camera"""
+    """Get detection statistics for a camera dynamically calculated from database"""
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -269,10 +269,10 @@ def get_detection_stats(camera_id: str) -> Dict:
     """, (camera_id,))
     total = cursor.fetchone()["total"]
     
-    # Violations
+    # Violations (excluding legal / none)
     cursor.execute("""
         SELECT COUNT(*) as violations FROM detections 
-        WHERE camera_id = ? AND violation IS NOT NULL
+        WHERE camera_id = ? AND violation IS NOT NULL AND violation != '' AND violation != 'None' AND violation != 'None (Legal)'
     """, (camera_id,))
     violations = cursor.fetchone()["violations"]
     
@@ -313,3 +313,33 @@ def delete_detection(detection_id: int):
     
     conn.commit()
     conn.close()
+
+
+def update_detection_correction(detection_id_or_plate: str, correct_plate: Optional[str], status: str = "confirmed") -> bool:
+    """
+    Update correct_plate and status for a detection record.
+    Supports either integer ID or plate string as key.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    val_to_store = "REJECTED/UNREADABLE" if status == "rejected" else correct_plate
+
+    try:
+        if str(detection_id_or_plate).isdigit():
+            cursor.execute("""
+                UPDATE detections SET correct_plate = ? WHERE id = ?
+            """, (val_to_store, int(detection_id_or_plate)))
+        else:
+            cursor.execute("""
+                UPDATE detections SET correct_plate = ? WHERE detected_plate = ?
+            """, (val_to_store, str(detection_id_or_plate)))
+            
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update detection correction: {e}")
+        conn.close()
+        return False
+

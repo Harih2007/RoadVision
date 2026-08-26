@@ -27,7 +27,7 @@ var RoadVisionConfig = {
     FRAME_INTERVAL: 5, // process every Nth frame
 
     // UI Settings
-    DETECTION_CONFIDENCE_THRESHOLD: 0.6,
+    DETECTION_CONFIDENCE_THRESHOLD: 0.85,
     ITEMS_PER_PAGE: 10
 };
 

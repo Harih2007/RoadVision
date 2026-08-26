@@ -35,6 +35,6 @@
     Camera Offline
   </text>
   <text x="400" y="315" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="13" font-weight="500" fill="#64748B" text-anchor="middle">
-    Click the camera icon below to activate the live feed
+    Click the videocam button in the controls overlay to start
   </text>
 </svg>

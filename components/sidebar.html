@@ -7,7 +7,11 @@
       <h1>RoadVision</h1>
       <p>Traffic Analytics</p>
     </div>
+    <button class="sidebar-close-btn" id="sidebarCloseBtn" title="Close Menu">
+      <span class="material-symbols-outlined">close</span>
+    </button>
   </div>
+
   <nav class="sidebar-nav">
     <a href="index.html" data-page="index">
       <span class="material-symbols-outlined nav-icon">dashboard</span>
@@ -25,7 +29,27 @@
       <span class="material-symbols-outlined nav-icon">history</span>
       <span>History</span>
     </a>
+    <a href="review-queue.html" data-page="review-queue">
+      <span class="material-symbols-outlined nav-icon">rate_review</span>
+      <span>Review Queue</span>
+      <span class="review-queue-badge" id="reviewQueueCount" style="display:none;">0</span>
+    </a>
+    <a href="audit-log.html" data-page="audit-log" id="auditLogNavLink" style="display:none;">
+      <span class="material-symbols-outlined nav-icon">admin_panel_settings</span>
+      <span>Audit Log</span>
+    </a>
   </nav>
+
+  <!-- Active Node Status (Flat, Flush, No Nested Card) -->
+  <div class="sidebar-node-status">
+    <div class="node-status-header">
+      <span class="node-status-dot"></span>
+      <span class="node-status-title">Active Node</span>
+    </div>
+    <div class="node-status-cam" id="sidebarActiveCamera">Camera 1 • Expressway</div>
+    <div class="node-status-meta">1080p • 30 FPS • AI Engine OK</div>
+  </div>
+
   <div class="sidebar-footer">
     <a href="login.html" class="sidebar-logout">
       <span class="material-symbols-outlined nav-icon">logout</span>
@@ -33,3 +57,4 @@
     </a>
   </div>
 </aside>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>

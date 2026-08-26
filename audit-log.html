@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoadVision — Security Audit Log</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Slot -->
+    <div id="sidebar-slot"></div>
+
+    <!-- Main Area -->
+    <div class="main-area">
+      <!-- Header Slot -->
+      <div id="header-slot"></div>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <div class="section-header" style="margin-bottom:24px;">
+          <div>
+            <h2 style="font-size:22px; font-weight:700;">System Security Audit Ledger</h2>
+            <p style="color:var(--text-muted); font-size:13px; margin-top:4px;">
+              Tamper-evident log of all PII access attempts, operator reviews, priority alerts, and exports. (Restricted: Admin Only)
+            </p>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn-primary" id="refreshAuditBtn" style="gap:6px; padding:8px 16px; font-size:13px;">
+              <span class="material-symbols-outlined" style="font-size:16px;">refresh</span>
+              Refresh Logs
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div style="display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;">
+          <button class="filter-btn active" data-filter="ALL">All Logs</button>
+          <button class="filter-btn" data-filter="PII_REVEAL">PII Reveals</button>
+          <button class="filter-btn" data-filter="REVIEW">Review Queue</button>
+          <button class="filter-btn" data-filter="STOLEN_ALERT_ACK">Priority Alerts</button>
+          <button class="filter-btn" data-filter="EXPORT_PDF">PDF Exports</button>
+          <button class="filter-btn" data-filter="AUTH">Auth Events</button>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyAuditState" style="text-align:center; padding:60px 20px; display:none;" class="card">
+          <div style="font-size:48px; color:var(--text-muted); margin-bottom:16px;">
+            <span class="material-symbols-outlined" style="font-size:48px;">receipt_long</span>
+          </div>
+          <h3 style="margin-bottom:8px; color:var(--text-primary); font-size:18px;">No Audit Logs Found</h3>
+          <p style="color:var(--text-muted); font-size:14px;">Security events will be logged automatically as operators perform actions.</p>
+        </div>
+
+        <!-- Audit Log Table -->
+        <div class="card" id="auditTableCard" data-glare="false">
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Audit ID & Time</th>
+                  <th>Operator & Role</th>
+                  <th>Action Type</th>
+                  <th>Target Plate / ID</th>
+                  <th>Details & Reason</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <!-- Rows injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="margin-top:16px; font-size:11px; color:var(--text-muted); font-style:italic; text-align:center;">
+          Production Architecture Note: Audit ledger entries are signed via SHA-256 HMAC and replicated to WORM cloud storage for legal compliance under IT Act Section 79.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="components/audit-log.js"></script>
+  <script src="components/auth-guard.js"></script>
+  <script src="components/loader.js"></script>
+  <script src="components/glare-hover.js"></script>
+  <script src="api-client.js"></script>
+  <script>
+    const auditTableBody = document.getElementById('auditTableBody');
+    const auditTableCard = document.getElementById('auditTableCard');
+    const emptyAuditState = document.getElementById('emptyAuditState');
+    const refreshBtn = document.getElementById('refreshAuditBtn');
+    let currentFilter = 'ALL';
+
+    function getActionBadge(action) {
+      if (action === 'PII_REVEAL') {
+        return '<span class="badge alert"><span class="material-symbols-outlined" style="font-size:12px;">lock_open</span> PII Revealed</span>';
+      } else if (action === 'REVIEW_CONFIRM') {
+        return '<span class="badge success"><span class="material-symbols-outlined" style="font-size:12px;">check_circle</span> Queue Confirmed</span>';
+      } else if (action === 'REVIEW_REJECT') {
+        return '<span class="badge warning"><span class="material-symbols-outlined" style="font-size:12px;">cancel</span> Queue Rejected</span>';
+      } else if (action === 'STOLEN_ALERT_ACK') {
+        return '<span class="badge alert" style="background:#DC2626; color:#fff;"><span class="material-symbols-outlined" style="font-size:12px;">emergency</span> Priority Alert Ack</span>';
+      } else if (action === 'EXPORT_PDF') {
+        return '<span class="badge primary"><span class="material-symbols-outlined" style="font-size:12px;">picture_as_pdf</span> PDF Export</span>';
+      } else if (action === 'LOGIN') {
+        return '<span class="badge success"><span class="material-symbols-outlined" style="font-size:12px;">login</span> User Login</span>';
+      } else if (action === 'LOGOUT') {
+        return '<span class="badge secondary"><span class="material-symbols-outlined" style="font-size:12px;">logout</span> Logout</span>';
+      } else if (action === 'SESSION_TIMEOUT') {
+        return '<span class="badge warning"><span class="material-symbols-outlined" style="font-size:12px;">timer_off</span> Idle Timeout</span>';
+      }
+      return `<span class="badge secondary">${action}</span>`;
+    }
+
+    function renderAuditLogs() {
+      const logs = RoadVisionAudit.getLogs();
+      
+      const filtered = logs.filter(log => {
+        if (currentFilter === 'ALL') return true;
+        if (currentFilter === 'REVIEW') return log.action.startsWith('REVIEW_');
+        if (currentFilter === 'AUTH') return log.action === 'LOGIN' || log.action === 'LOGOUT' || log.action === 'SESSION_TIMEOUT';
+        return log.action === currentFilter;
+      });
+
+      if (filtered.length === 0) {
+        auditTableCard.style.display = 'none';
+        emptyAuditState.style.display = 'block';
+        return;
+      }
+
+      emptyAuditState.style.display = 'none';
+      auditTableCard.style.display = 'block';
+
+      auditTableBody.innerHTML = filtered.map(item => {
+        const timeStr = item.timestamp 
+          ? new Date(item.timestamp).toLocaleString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit', second: '2-digit'
+            })
+          : 'Unknown';
+
+        const detailsText = item.details ? JSON.stringify(item.details).replace(/"/g, '') : 'N/A';
+
+        let rowStatusClass = 'row-status-success';
+        if (item.action === 'PII_REVEAL' || item.action === 'STOLEN_ALERT_ACK') {
+          rowStatusClass = 'row-status-alert';
+        } else if (item.action === 'REVIEW_REJECT' || item.action === 'SESSION_TIMEOUT') {
+          rowStatusClass = 'row-status-warning';
+        }
+
+        return `
+          <tr class="${rowStatusClass}">
+            <td>
+              <div style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--text-primary);">${item.id}</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${timeStr}</div>
+            </td>
+            <td>
+              <div style="font-weight:700; font-size:13px; color:var(--text-primary);">${item.operatorName}</div>
+              <div style="font-size:11px; color:var(--primary); font-weight:600;">${item.role} (${item.operatorId})</div>
+            </td>
+            <td>${getActionBadge(item.action)}</td>
+            <td>
+              <span class="plate-number" style="font-size:13px;">${item.targetId}</span>
+            </td>
+            <td style="font-size:12px; color:var(--text-secondary); max-width:280px; word-break:break-word;">
+              ${detailsText}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    refreshBtn.addEventListener('click', renderAuditLogs);
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderAuditLogs();
+      });
+    });
+
+    window.addEventListener('load', renderAuditLogs);
+  </script>
+</body>
+</html>

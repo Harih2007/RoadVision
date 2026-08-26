@@ -1,0 +1,271 @@
+{
+  "vehicles": [
+    {
+      "plate": "DL01CA1234",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (Motor Car)",
+      "state": "Delhi (RTO Mayur Vihar)",
+      "reg_date": "2019-04-12",
+      "valid_until": "2034-04-11",
+      "insurance": { "status": "Valid", "expiry": "2026-11-20", "provider": "ICICI Lombard General Insurance" },
+      "puc": { "status": "Valid", "expiry": "2026-08-15" },
+      "challans": { "count": 0, "total_amount": 0, "items": [] },
+      "stolen": false,
+      "owner": {
+        "name": "Aarav Sharma",
+        "address": "B-42, Mayur Vihar Phase 1, New Delhi 110091",
+        "rto": "DL-01 (Delhi North-East)"
+      }
+    },
+    {
+      "plate": "MH12AB5678",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (Motor SUV)",
+      "state": "Maharashtra (RTO Pune)",
+      "reg_date": "2021-08-05",
+      "valid_until": "2036-08-04",
+      "insurance": { "status": "Expired", "expiry": "2024-02-10", "provider": "HDFC ERGO Insurance" },
+      "puc": { "status": "Valid", "expiry": "2026-09-30" },
+      "challans": { "count": 2, "total_amount": 2500, "items": ["Over-speeding (₹1500)", "Signal Jump (₹1000)"] },
+      "stolen": false,
+      "owner": {
+        "name": "Priya Patel",
+        "address": "104 Sunrise Towers, Baner, Pune 411045",
+        "rto": "MH-12 (Pune RTO)"
+      }
+    },
+    {
+      "plate": "KA05XY9999",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (Motor Sedan)",
+      "state": "Karnataka (RTO Bengaluru South)",
+      "reg_date": "2018-03-22",
+      "valid_until": "2033-03-21",
+      "insurance": { "status": "Expired", "expiry": "2023-11-01", "provider": "Bajaj Allianz" },
+      "puc": { "status": "Expired", "expiry": "2024-01-15" },
+      "challans": { "count": 5, "total_amount": 8000, "items": ["No Helmet (₹500)", "Dangerous Driving (₹5000)", "Illegal Parking (₹2500)"] },
+      "stolen": true,
+      "stolen_details": {
+        "fir_number": "FIR-2024-88412",
+        "police_station": "Koramangala Police Station, Bengaluru",
+        "reported_date": "2024-06-14",
+        "crime_status": "Active Wanted - NCRB Stolen Database Match"
+      },
+      "owner": {
+        "name": "Siddharth Rao",
+        "address": "45/2 8th Main, 4th Block Koramangala, Bengaluru 560034",
+        "rto": "KA-05 (Bengaluru South)"
+      }
+    },
+    {
+      "plate": "TN09BC4321",
+      "registration_status": "Valid",
+      "vehicle_class": "MCWG (Two Wheeler)",
+      "state": "Tamil Nadu (RTO Chennai South)",
+      "reg_date": "2020-11-10",
+      "valid_until": "2035-11-09",
+      "insurance": { "status": "Valid", "expiry": "2026-10-15", "provider": "TATA AIG" },
+      "puc": { "status": "Expired", "expiry": "2025-05-10" },
+      "challans": { "count": 1, "total_amount": 1000, "items": ["Triple Riding (₹1000)"] },
+      "stolen": false,
+      "owner": {
+        "name": "Karthik Raja",
+        "address": "12 Anna Salai, T. Nagar, Chennai 600017",
+        "rto": "TN-09 (Chennai South)"
+      }
+    },
+    {
+      "plate": "UP16Z0001",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (Luxury SUV)",
+      "state": "Uttar Pradesh (RTO Noida)",
+      "reg_date": "2022-01-15",
+      "valid_until": "2037-01-14",
+      "insurance": { "status": "Valid", "expiry": "2027-01-15", "provider": "National Insurance" },
+      "puc": { "status": "Valid", "expiry": "2026-12-01" },
+      "challans": { "count": 0, "total_amount": 0, "items": [] },
+      "stolen": false,
+      "owner": {
+        "name": "Vikram Singh",
+        "address": "Flat 802 Grand Omaxe, Sector 93B, Noida 201304",
+        "rto": "UP-16 (Gautam Buddh Nagar)"
+      }
+    },
+    {
+      "plate": "WB65D18753",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (Hatchback)",
+      "state": "West Bengal (RTO Kolkata)",
+      "reg_date": "2017-06-30",
+      "valid_until": "2032-06-29",
+      "insurance": { "status": "Valid", "expiry": "2026-06-28", "provider": "New India Assurance" },
+      "puc": { "status": "Valid", "expiry": "2026-07-20" },
+      "challans": { "count": 1, "total_amount": 500, "items": ["No Parking (₹500)"] },
+      "stolen": false,
+      "owner": {
+        "name": "Anirban Banerjee",
+        "address": "78 Rashbehari Avenue, Kalighat, Kolkata 700026",
+        "rto": "WB-65 (Kolkata South)"
+      }
+    },
+    {
+      "plate": "HR26DQ5555",
+      "registration_status": "Expired",
+      "vehicle_class": "LMV (Luxury SUV)",
+      "state": "Haryana (RTO Gurugram)",
+      "reg_date": "2008-05-18",
+      "valid_until": "2023-05-17",
+      "insurance": { "status": "Expired", "expiry": "2022-09-01", "provider": "Reliance General" },
+      "puc": { "status": "Expired", "expiry": "2022-12-10" },
+      "challans": { "count": 3, "total_amount": 12000, "items": ["Using Tinted Glass (₹2000)", "Drunk Driving (₹10000)"] },
+      "stolen": true,
+      "stolen_details": {
+        "fir_number": "FIR-2023-99104",
+        "police_station": "DLF Phase 3 Police Station, Gurugram",
+        "reported_date": "2023-10-05",
+        "crime_status": "WANTED - Stolen Vehicle & Vehicle De-registered (Overage Diesel 10y)"
+      },
+      "owner": {
+        "name": "Manish Verma",
+        "address": "Plot 120, DLF Phase 2, Gurugram 122002",
+        "rto": "HR-26 (Gurugram)"
+      }
+    },
+    {
+      "plate": "RJ14CB1008",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (Motor Car)",
+      "state": "Rajasthan (RTO Jaipur)",
+      "reg_date": "2020-04-10",
+      "valid_until": "2035-04-09",
+      "insurance": { "status": "Valid", "expiry": "2026-04-09", "provider": "IFFCO Tokio" },
+      "puc": { "status": "Valid", "expiry": "2026-10-10" },
+      "challans": { "count": 0, "total_amount": 0, "items": [] },
+      "stolen": false,
+      "owner": {
+        "name": "Sunita Kanwar",
+        "address": "C-14 Vaishali Nagar, Jaipur 302021",
+        "rto": "RJ-14 (Jaipur South)"
+      }
+    },
+    {
+      "plate": "GJ01AB1122",
+      "registration_status": "Valid",
+      "vehicle_class": "HMV (Goods Transport)",
+      "state": "Gujarat (RTO Ahmedabad)",
+      "reg_date": "2016-09-12",
+      "valid_until": "2031-09-11",
+      "insurance": { "status": "Expired", "expiry": "2025-01-10", "provider": "Oriental Insurance" },
+      "puc": { "status": "Valid", "expiry": "2026-03-15" },
+      "challans": { "count": 4, "total_amount": 6500, "items": ["Overloading (₹5000)", "No Permit Copy (₹1500)"] },
+      "stolen": false,
+      "owner": {
+        "name": "Jignesh Shah",
+        "address": "22 CG Road, Navrangpura, Ahmedabad 380009",
+        "rto": "GJ-01 (Ahmedabad)"
+      }
+    },
+    {
+      "plate": "KL07CC7777",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (EV Motor Car)",
+      "state": "Kerala (RTO Ernakulam)",
+      "reg_date": "2023-02-14",
+      "valid_until": "2038-02-13",
+      "insurance": { "status": "Valid", "expiry": "2027-02-14", "provider": "GoDigit Insurance" },
+      "puc": { "status": "Valid", "expiry": "2027-02-14" },
+      "challans": { "count": 0, "total_amount": 0, "items": [] },
+      "stolen": false,
+      "owner": {
+        "name": "Mathew Philip",
+        "address": "8/112 Marine Drive, Kochi 682031",
+        "rto": "KL-07 (Ernakulam)"
+      }
+    },
+    {
+      "plate": "AP09XY3333",
+      "registration_status": "Valid",
+      "vehicle_class": "MCWG (Scooter)",
+      "state": "Andhra Pradesh (RTO Vijayawada)",
+      "reg_date": "2019-07-21",
+      "valid_until": "2034-07-20",
+      "insurance": { "status": "Expired", "expiry": "2024-07-20", "provider": "SBI General Insurance" },
+      "puc": { "status": "Expired", "expiry": "2024-12-01" },
+      "challans": { "count": 1, "total_amount": 1000, "items": ["Riding Without Helmet (₹1000)"] },
+      "stolen": false,
+      "owner": {
+        "name": "Ramesh Chandra",
+        "address": "14-2 Benz Circle, Vijayawada 520010",
+        "rto": "AP-09 (Vijayawada)"
+      }
+    },
+    {
+      "plate": "TS08EQ9900",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (Sedan)",
+      "state": "Telangana (RTO Hyderabad)",
+      "reg_date": "2022-09-01",
+      "valid_until": "2037-08-31",
+      "insurance": { "status": "Valid", "expiry": "2026-09-01", "provider": "Future Generali" },
+      "puc": { "status": "Valid", "expiry": "2026-11-15" },
+      "challans": { "count": 0, "total_amount": 0, "items": [] },
+      "stolen": false,
+      "owner": {
+        "name": "Mohammed Ali",
+        "address": "Flat 301 Jubilee Hills, Hyderabad 500033",
+        "rto": "TS-08 (Hyderabad East)"
+      }
+    },
+    {
+      "plate": "MP04AZ4444",
+      "registration_status": "Expired",
+      "vehicle_class": "LMV (Motor SUV)",
+      "state": "Madhya Pradesh (RTO Bhopal)",
+      "reg_date": "2007-03-10",
+      "valid_until": "2022-03-09",
+      "insurance": { "status": "Expired", "expiry": "2021-05-01", "provider": "United India Insurance" },
+      "puc": { "status": "Expired", "expiry": "2021-08-10" },
+      "challans": { "count": 3, "total_amount": 4000, "items": ["Expired Fitness Certificate (₹3000)", "No Insurance (₹1000)"] },
+      "stolen": false,
+      "owner": {
+        "name": "Rajesh Sharma",
+        "address": "88 Arera Colony, Bhopal 462016",
+        "rto": "MP-04 (Bhopal)"
+      }
+    },
+    {
+      "plate": "CH01BU8888",
+      "registration_status": "Valid",
+      "vehicle_class": "LMV (Motor Car)",
+      "state": "Chandigarh (RTO UT)",
+      "reg_date": "2021-03-15",
+      "valid_until": "2036-03-14",
+      "insurance": { "status": "Valid", "expiry": "2026-03-14", "provider": "Acko General Insurance" },
+      "puc": { "status": "Valid", "expiry": "2026-09-10" },
+      "challans": { "count": 0, "total_amount": 0, "items": [] },
+      "stolen": false,
+      "owner": {
+        "name": "Gurpreet Singh",
+        "address": "House 105, Sector 17-C, Chandigarh 160017",
+        "rto": "CH-01 (Chandigarh)"
+      }
+    },
+    {
+      "plate": "PB65X1111",
+      "registration_status": "Valid",
+      "vehicle_class": "MCWG (Two Wheeler)",
+      "state": "Punjab (RTO Mohali)",
+      "reg_date": "2020-08-20",
+      "valid_until": "2035-08-19",
+      "insurance": { "status": "Valid", "expiry": "2026-08-19", "provider": "Cholamandalam MS" },
+      "puc": { "status": "Valid", "expiry": "2026-10-25" },
+      "challans": { "count": 1, "total_amount": 500, "items": ["Red Light Crossing (₹500)"] },
+      "stolen": false,
+      "owner": {
+        "name": "Harpreet Kaur",
+        "address": "54 Phase 7, SAS Nagar Mohali 160062",
+        "rto": "PB-65 (Mohali)"
+      }
+    }
+  ]
+}

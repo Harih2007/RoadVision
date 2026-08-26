@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RoadVision — Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=orient" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 </head>
 <body>
@@ -163,9 +163,13 @@
     </div>
   </div>
 
+  <script src="components/audit-log.js"></script>
+  <script src="components/auth-guard.js"></script>
   <script src="components/loader.js"></script>
   <script src="components/evidence-store.js"></script>
   <script src="components/glare-hover.js"></script>
+  <script src="components/confidence-tier.js"></script>
+  <script src="components/vehicle-verification.js"></script>
   <script src="api-client.js"></script>
   <script>
     // ============ Update Stats with Real Data ============
@@ -488,7 +492,7 @@
             </div>
             <div class="detection-row">
               <span class="detection-label">Confidence</span>
-              <span class="detection-value" style="color:${confColor}; font-weight:600;">${conf}%</span>
+              <div>${confidenceBadge(conf).html}</div>
             </div>
             ${r.frame ? `<div class="detection-row"><span class="detection-label">Frame</span><span class="detection-value">#${r.frame}</span></div>` : ''}
             ${r.frames_seen ? `<div class="detection-row"><span class="detection-label">Stability</span><span class="detection-value" style="color:var(--success); font-weight:600;">${r.frames_seen} frames</span></div>` : ''}
@@ -611,13 +615,18 @@
     const evidenceModalDetails = document.getElementById('evidenceModalDetails');
     const evidenceModalClose = document.getElementById('evidenceModalClose');
 
-    function openEvidenceModal(imgSrc, plate, corrected, violation, confidence) {
+    async function openEvidenceModal(imgSrc, plate, corrected, violation, confidence) {
       evidenceModalImg.src = imgSrc;
+      const effectivePlate = (corrected && corrected !== '— (No correction needed)') ? corrected : plate;
+      const vRecord = await RoadVisionVehicle.lookupVehicleRecord(effectivePlate);
+      const vCardHTML = RoadVisionVehicle.buildVerificationCardHTML(vRecord, effectivePlate);
+
       evidenceModalDetails.innerHTML = `
         <div class="detection-row"><span class="detection-label">Detected Plate</span><span class="plate-number">${plate}</span></div>
         <div class="detection-row"><span class="detection-label">Correct Plate</span><span class="detection-value">${corrected}</span></div>
         <div class="detection-row"><span class="detection-label">Violation</span><span class="badge alert">${violation}</span></div>
-        <div class="detection-row"><span class="detection-label">Confidence</span><span class="detection-value" style="color:var(--success); font-weight:600;">${confidence}%</span></div>
+        <div class="detection-row"><span class="detection-label">Confidence</span><div>${confidenceBadge(confidence).html}</div></div>
+        ${vCardHTML}
       `;
       evidenceModal.classList.add('active');
     }

@@ -1,21 +1,66 @@
 <header class="header" id="header">
   <div class="header-left">
+    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="Toggle Navigation Menu" type="button">
+      <span class="material-symbols-outlined">menu</span>
+    </button>
     <h2 id="page-title">Dashboard</h2>
-    <div class="search-box">
-      <span class="material-symbols-outlined">search</span>
-      <input type="text" placeholder="Search data..." id="header-search" />
-    </div>
   </div>
   <div class="header-right">
-    <a href="camera-profile.html" class="camera-profile-btn">
-      <div class="camera-icon-wrapper">
-        <span class="material-symbols-outlined">videocam</span>
+    <!-- Camera Dropdown Switcher -->
+    <div class="camera-dropdown" id="cameraDropdown">
+      <button class="camera-profile-btn" id="cameraDropdownToggle" type="button">
+        <div class="camera-icon-wrapper">
+          <span class="material-symbols-outlined">videocam</span>
+        </div>
+        <div class="camera-info-text">
+          <div class="camera-info-name" id="cameraName">Camera 1</div>
+          <div class="camera-info-loc" id="cameraLocation">Click to set location</div>
+        </div>
+        <span class="material-symbols-outlined camera-dropdown-arrow" id="cameraDropdownArrow">expand_more</span>
+      </button>
+      <div class="camera-dropdown-menu" id="cameraDropdownMenu">
+        <button class="camera-dropdown-item" data-cam-id="CAM-001" data-cam-name="Camera 1" data-cam-loc="Main Expressway North">
+          <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary);">videocam</span>
+          <div>
+            <div style="font-weight:600; font-size:13px;">Camera 1</div>
+            <div style="font-size:11px; color:var(--text-muted);">Main Expressway North</div>
+          </div>
+          <span class="material-symbols-outlined camera-dropdown-check" style="font-size:16px; color:var(--success); margin-left:auto; display:none;">check_circle</span>
+        </button>
+        <button class="camera-dropdown-item" data-cam-id="CAM-002" data-cam-name="Camera 2" data-cam-loc="City Center Junction">
+          <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary);">videocam</span>
+          <div>
+            <div style="font-weight:600; font-size:13px;">Camera 2</div>
+            <div style="font-size:11px; color:var(--text-muted);">City Center Junction</div>
+          </div>
+          <span class="material-symbols-outlined camera-dropdown-check" style="font-size:16px; color:var(--success); margin-left:auto; display:none;">check_circle</span>
+        </button>
+        <button class="camera-dropdown-item" data-cam-id="CAM-003" data-cam-name="Camera 3" data-cam-loc="Highway Toll Plaza">
+          <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary);">videocam</span>
+          <div>
+            <div style="font-weight:600; font-size:13px;">Camera 3</div>
+            <div style="font-size:11px; color:var(--text-muted);">Highway Toll Plaza</div>
+          </div>
+          <span class="material-symbols-outlined camera-dropdown-check" style="font-size:16px; color:var(--success); margin-left:auto; display:none;">check_circle</span>
+        </button>
+        <button class="camera-dropdown-item" data-cam-id="CAM-004" data-cam-name="Camera 4" data-cam-loc="Airport Road Entry">
+          <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary);">videocam</span>
+          <div>
+            <div style="font-weight:600; font-size:13px;">Camera 4</div>
+            <div style="font-size:11px; color:var(--text-muted);">Airport Road Entry</div>
+          </div>
+          <span class="material-symbols-outlined camera-dropdown-check" style="font-size:16px; color:var(--success); margin-left:auto; display:none;">check_circle</span>
+        </button>
+        <hr id="cameraSettingsDivider" style="border:none; border-top:1px solid var(--border-light); margin:4px 0;">
+        <a href="camera-profile.html" class="camera-dropdown-item" id="cameraSettingsDropdownItem" style="text-decoration:none;">
+          <span class="material-symbols-outlined" style="font-size:18px; color:var(--text-muted);">settings</span>
+          <div>
+            <div style="font-weight:600; font-size:13px;">Camera Settings</div>
+            <div style="font-size:11px; color:var(--text-muted);">Configure location & profile</div>
+          </div>
+        </a>
       </div>
-      <div class="camera-info-text">
-        <div class="camera-info-name" id="cameraName">Camera 1</div>
-        <div class="camera-info-loc" id="cameraLocation">Click to set location</div>
-      </div>
-    </a>
+    </div>
     <a href="login.html" class="header-logout-btn" title="Logout">
       <span class="material-symbols-outlined">logout</span>
     </a>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RoadVision — History</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=orient" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
   <!-- jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -22,9 +22,18 @@
 
       <!-- Main Content -->
       <div class="main-content">
-        <div class="section-header" style="margin-bottom:24px;">
-          <h2>Detection History</h2>
-          <div style="display:flex; gap:10px; align-items:center;">
+        <div class="section-header" style="margin-bottom:20px; flex-wrap:wrap; gap:14px;">
+          <div>
+            <h2>Detection History</h2>
+            <p style="color:var(--text-muted); font-size:13px; margin-top:3px;">
+              Comprehensive log of all registered, unregistered, and violating vehicles.
+            </p>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <div class="scoped-search-box">
+              <span class="material-symbols-outlined">search</span>
+              <input type="text" id="historySearchInput" placeholder="Search by plate number..." />
+            </div>
             <span class="badge" id="historyCount" style="background:var(--surface-secondary); color:var(--text);">
               <span id="historyNumber">0</span> Records
             </span>
@@ -48,8 +57,8 @@
           <div style="font-size:48px; color:var(--text-muted); margin-bottom:16px;">
             <span class="material-symbols-outlined" style="font-size:48px;">history</span>
           </div>
-          <h3 style="margin-bottom:8px; color:var(--text);">No History Yet</h3>
-          <p style="color:var(--text-muted); font-size:14px;">
+          <h3 style="margin-bottom:8px; color:var(--text);" id="emptyHistoryTitle">No History Yet</h3>
+          <p style="color:var(--text-muted); font-size:14px;" id="emptyHistoryMsg">
             Detections will appear here after analyzing a video or using live monitoring.
           </p>
         </div>
@@ -62,8 +71,7 @@
                 <tr>
                   <th>Detected Registration</th>
                   <th>Correct Registration</th>
-                  <th>Violation</th>
-                  <th>Vehicle Status</th>
+                  <th>Vehicle & Violation Status</th>
                   <th>Confidence</th>
                   <th>Time</th>
                   <th style="text-align:right">Actions</th>
@@ -97,10 +105,14 @@
     </div>
   </div>
 
+  <script src="components/audit-log.js"></script>
+  <script src="components/auth-guard.js"></script>
   <script src="components/loader.js"></script>
   <script src="components/evidence-store.js"></script>
   <script src="components/glare-hover.js"></script>
   <script src="components/pagination.js"></script>
+  <script src="components/confidence-tier.js"></script>
+  <script src="components/vehicle-verification.js"></script>
   <script src="api-client.js"></script>
   <script>
     // ============ Load Real History ============
@@ -108,84 +120,121 @@
     const historyTable = document.getElementById('historyTable');
     const loadingState = document.getElementById('loadingState');
     const emptyState = document.getElementById('emptyState');
+    const emptyHistoryTitle = document.getElementById('emptyHistoryTitle');
+    const emptyHistoryMsg = document.getElementById('emptyHistoryMsg');
     const historyNumber = document.getElementById('historyNumber');
+    const searchInput = document.getElementById('historySearchInput');
+
+    let allHistoryDetections = [];
+
+    function renderTableRows(list) {
+      if (list.length === 0) {
+        historyTable.style.display = 'none';
+        emptyState.style.display = 'block';
+        if (searchInput.value.trim()) {
+          emptyHistoryTitle.textContent = 'No Matching Records';
+          emptyHistoryMsg.textContent = `No history records matched "${searchInput.value.trim()}".`;
+        } else {
+          emptyHistoryTitle.textContent = 'No History Yet';
+          emptyHistoryMsg.textContent = 'Detections will appear here after analyzing a video or using live monitoring.';
+        }
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      historyTable.style.display = 'block';
+
+      historyTableBody.innerHTML = list.map((det, index) => {
+        const confidence = Math.round(det.confidence * 100);
+        const isViolation = det.violation && det.violation !== 'None' && det.violation !== 'None (Legal)';
+        const violationText = det.violation || 'None (Legal)';
+        
+        let mergedStatusHTML = '';
+        const vType = (det.vehicle_info && det.vehicle_info.vehicle_type) ? det.vehicle_info.vehicle_type : 'Car';
+        const isRegistered = det.vehicle_info ? det.vehicle_info.registered : true;
+
+        let rowStatusClass = 'row-status-success';
+        if (isViolation) {
+          mergedStatusHTML = `<span class="badge alert" style="font-weight:600;"><span class="material-symbols-outlined" style="font-size:12px;">warning</span> ${det.violation}</span>`;
+          rowStatusClass = 'row-status-alert';
+        } else if (!isRegistered) {
+          mergedStatusHTML = `<span class="badge warning" style="font-weight:600;"><span class="material-symbols-outlined" style="font-size:12px;">block</span> Unregistered (${vType})</span>`;
+          rowStatusClass = 'row-status-warning';
+        } else if (confidence < 85) {
+          mergedStatusHTML = `<span class="badge success" style="font-weight:600;"><span class="material-symbols-outlined" style="font-size:12px;">check_circle</span> Registered (${vType}) — Legal</span>`;
+          rowStatusClass = 'row-status-warning';
+        } else {
+          mergedStatusHTML = `<span class="badge success" style="font-weight:600;"><span class="material-symbols-outlined" style="font-size:12px;">check_circle</span> Registered (${vType}) — Legal</span>`;
+          rowStatusClass = 'row-status-success';
+        }
+
+        const correctedDisplay = det.correct_plate ? 
+          `<span class="badge warning" style="font-family:var(--font-mono); font-size:12px; font-weight:700;">${det.correct_plate}</span>` : 
+          '<span style="color:var(--text-muted)">—</span>';
+        
+        const fontBadge = det.font_anomaly ? 
+          '<span class="badge warning" style="font-size:10px; margin-left:4px;">Non-Standard Font</span>' : '';
+
+        const timeStr = det.timestamp 
+          ? new Date(det.timestamp).toLocaleString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit', second: '2-digit'
+            })
+          : 'Unknown';
+
+        return `
+          <tr class="${rowStatusClass}">
+            <td><span class="plate-number">${det.detected_plate}</span>${fontBadge}</td>
+            <td>${correctedDisplay}</td>
+            <td>${mergedStatusHTML}</td>
+            <td>${confidenceBadge(confidence).html}</td>
+            <td style="color:var(--text-muted); font-size:13px; white-space:nowrap;">${timeStr}</td>
+            <td style="text-align:right">
+              <button class="icon-btn" onclick="viewDetails('${det.detected_plate}', '${(det.correct_plate != null && det.correct_plate !== 'null') ? det.correct_plate : ''}', '${violationText}', ${confidence}, ${JSON.stringify(det.vehicle_info || {}).replace(/"/g, '&quot;')}, '${det.plate_image || ''}')">
+                <span class="material-symbols-outlined">visibility</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterHistory() {
+      const query = (searchInput.value || '').trim().toLowerCase();
+      if (!query) {
+        renderTableRows(allHistoryDetections);
+        historyNumber.textContent = allHistoryDetections.length;
+        return;
+      }
+
+      const filtered = allHistoryDetections.filter(det => {
+        const detPlate = (det.detected_plate || '').toLowerCase();
+        const corrPlate = (det.correct_plate || '').toLowerCase();
+        return detPlate.includes(query) || corrPlate.includes(query);
+      });
+
+      renderTableRows(filtered);
+      historyNumber.textContent = filtered.length;
+    }
+
+    searchInput.addEventListener('input', filterHistory);
 
     async function loadHistory() {
       try {
-        // Get all detections from database
         const detections = await RoadVisionAPI.Detection.getAll(false, 100);
-        
-        if (detections.length === 0) {
-          loadingState.style.display = 'none';
-          emptyState.style.display = 'block';
-          return;
-        }
-
-        // Update count
-        historyNumber.textContent = detections.length;
-
-        // Render table rows
-        historyTableBody.innerHTML = detections.map((det, index) => {
-          const confidence = Math.round(det.confidence * 100);
-          const badgeClass = det.violation ? 
-            (det.violation.includes('Tampered') ? 'alert' : 
-             det.violation.includes('Spacing') ? 'warning' : 'alert') : 'success';
-          const violationText = det.violation || 'None (Legal)';
-          
-          // Vehicle registration status
-          let vehicleStatus = 'Unknown';
-          let vehicleBadgeClass = 'secondary';
-          if (det.vehicle_info) {
-            if (det.vehicle_info.registered) {
-              vehicleStatus = `Registered (${det.vehicle_info.vehicle_type || 'N/A'})`;
-              vehicleBadgeClass = 'success';
-            } else {
-              vehicleStatus = 'Unregistered';
-              vehicleBadgeClass = 'alert';
-            }
-          }
-
-          const correctedDisplay = det.correct_plate ? 
-            `<span style="color:var(--warning); font-weight:600;">${det.correct_plate}</span>` : 
-            '<span style="color:var(--text-muted)">—</span>';
-          
-          // Font anomaly badge
-          const fontBadge = det.font_anomaly ? 
-            '<span class="badge warning" style="font-size:10px; margin-left:4px;">Non-Standard Font</span>' : '';
-
-          const timeStr = det.timestamp 
-            ? new Date(det.timestamp).toLocaleString('en-IN', {
-                timeZone: 'Asia/Kolkata',
-                day: '2-digit', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-              })
-            : 'Unknown';
-
-          return `
-            <tr>
-              <td><span class="plate-number">${det.detected_plate}</span>${fontBadge}</td>
-              <td>${correctedDisplay}</td>
-              <td><span class="badge ${badgeClass}">${violationText}</span></td>
-              <td><span class="badge ${vehicleBadgeClass}">${vehicleStatus}</span></td>
-              <td style="color:var(--success); font-weight:600;">${confidence}%</td>
-              <td style="color:var(--text-muted); font-size:13px; white-space:nowrap;">${timeStr}</td>
-              <td style="text-align:right">
-                <button class="icon-btn" onclick="viewDetails('${det.detected_plate}', '${det.correct_plate || ''}', '${violationText}', ${confidence}, ${JSON.stringify(det.vehicle_info || {}).replace(/"/g, '&quot;')}, '${det.plate_image || ''}')">
-                  <span class="material-symbols-outlined">visibility</span>
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-
-        // Show table, hide loading
-        loadingState.style.display = 'none';
-        historyTable.style.display = 'block';
-        document.getElementById('exportPdfBtn').style.display = 'inline-flex';
-
-        // Store detections globally for PDF export
         window._historyDetections = detections;
+        allHistoryDetections = detections || [];
 
+        loadingState.style.display = 'none';
+        historyNumber.textContent = allHistoryDetections.length;
+
+        renderTableRows(allHistoryDetections);
+
+        const exportBtn = document.getElementById('exportPdfBtn');
+        if (exportBtn && allHistoryDetections.length > 0) {
+          exportBtn.style.display = 'inline-flex';
+        }
       } catch (e) {
         console.error('Error loading history:', e);
         loadingState.style.display = 'none';
@@ -206,7 +255,7 @@
       if (e.target === evidenceModal) evidenceModal.classList.remove('active');
     });
 
-    function viewDetails(plate, corrected, violation, confidence, vehicleInfo, plateImage) {
+    async function viewDetails(plate, corrected, violation, confidence, vehicleInfo, plateImage) {
       // Use plate_image from database if available, otherwise try evidence store
       let imgSrc = plateImage || '';
       
@@ -223,6 +272,11 @@
         evidenceModalImg.style.display = 'none';
       }
 
+      // Lookup vehicle record from VAHAN mock database
+      const effectivePlate = (corrected && corrected !== 'null') ? corrected : plate;
+      const vRecord = await RoadVisionVehicle.lookupVehicleRecord(effectivePlate);
+      const vCardHTML = RoadVisionVehicle.buildVerificationCardHTML(vRecord, effectivePlate);
+
       evidenceModalDetails.innerHTML = `
         ${!imgSrc ? '<p style="padding:24px 0 8px; text-align:center; color:var(--text-muted); font-size:13px;"><span class="material-symbols-outlined" style="font-size:32px; display:block; margin-bottom:8px;">image_not_supported</span>No evidence frame captured yet.</p>' : ''}
         <div class="detection-row">
@@ -230,8 +284,8 @@
           <span class="plate-number">${plate}</span>
         </div>
         <div class="detection-row">
-          <span class="detection-label">Correct Plate</span>
-          <span class="detection-value">${corrected}</span>
+            <span class="detection-label">Correct Plate</span>
+              <span class="detection-value">${corrected && corrected !== 'null' ? corrected : '<span style="color:var(--text-muted)">—</span>'}</span>
         </div>
         <div class="detection-row">
           <span class="detection-label">Violation</span>
@@ -239,8 +293,9 @@
         </div>
         <div class="detection-row">
           <span class="detection-label">Confidence</span>
-          <span class="detection-value" style="color:var(--success); font-weight:600;">${confidence}%</span>
+          <div>${confidenceBadge(confidence).html}</div>
         </div>
+        ${vCardHTML}
       `;
       evidenceModal.classList.add('active');
     }
@@ -256,6 +311,10 @@
       if (!detections || detections.length === 0) {
         alert('No detections to export.');
         return;
+      }
+
+      if (window.RoadVisionAudit) {
+        window.RoadVisionAudit.record('EXPORT_PDF', 'HISTORY_TABLE', { recordCount: detections.length });
       }
 
       const { jsPDF } = window.jspdf;

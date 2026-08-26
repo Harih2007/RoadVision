@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoadVision — Review Queue</title>
+  <link rel="stylesheet" href="styles.css?v=orient" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Slot -->
+    <div id="sidebar-slot"></div>
+
+    <!-- Main Area -->
+    <div class="main-area">
+      <!-- Header Slot -->
+      <div id="header-slot"></div>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <div class="section-header" style="margin-bottom:24px;">
+          <div>
+            <h2 style="font-size:22px; font-weight:700;">Operator Review Queue</h2>
+            <p style="color:var(--text-muted); font-size:13px; margin-top:4px;">
+              Detections with confidence below the system threshold (<span id="thresholdDisplay">60%</span>) requiring manual verification.
+            </p>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <span class="badge warning" id="pendingBadge" style="padding:6px 12px; font-size:13px;">
+              <span class="material-symbols-outlined" style="font-size:16px;">pending_actions</span>
+              <span id="pendingCountNum">0</span> Items Pending Review
+            </span>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" style="text-align:center; padding:60px 20px;">
+          <div style="font-size:48px; color:var(--text-muted); margin-bottom:16px;">
+            <span class="material-symbols-outlined" style="font-size:48px;">hourglass_empty</span>
+          </div>
+          <p style="color:var(--text-muted); font-size:14px;">Loading review queue...</p>
+        </div>
+
+        <!-- Empty State (All Items Reviewed) -->
+        <div id="emptyState" style="text-align:center; padding:60px 20px; display:none;" class="card">
+          <div style="font-size:48px; color:var(--success); margin-bottom:16px;">
+            <span class="material-symbols-outlined" style="font-size:48px;">task_alt</span>
+          </div>
+          <h3 style="margin-bottom:8px; color:var(--text-primary); font-size:18px;">Review Queue Clear!</h3>
+          <p style="color:var(--text-muted); font-size:14px; max-width:480px; margin:0 auto 16px;">
+            All low-confidence plate detections have been verified or resolved. New detections below threshold will automatically populate here.
+          </p>
+          <a href="detections.html" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; font-size:13px; text-decoration:none; padding:8px 16px;">
+            <span class="material-symbols-outlined" style="font-size:16px;">detection_and_zone</span>
+            View Verified Detections
+          </a>
+        </div>
+
+        <!-- Review Queue Items List -->
+        <div class="review-queue-list" id="reviewQueueList" style="display:none;">
+          <!-- Review cards will be dynamically rendered here -->
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="components/audit-log.js"></script>
+  <script src="components/auth-guard.js"></script>
+  <script src="components/loader.js"></script>
+  <script src="components/evidence-store.js"></script>
+  <script src="components/glare-hover.js"></script>
+  <script src="components/confidence-tier.js"></script>
+  <script src="components/vehicle-verification.js"></script>
+  <script src="api-client.js"></script>
+  <script>
+    // Update threshold display in header
+    const thresholdPct = Math.round((window.RoadVisionConfig?.DETECTION_CONFIDENCE_THRESHOLD || 0.6) * 100);
+    document.getElementById('thresholdDisplay').textContent = `${thresholdPct}%`;
+
+    const reviewQueueList = document.getElementById('reviewQueueList');
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const pendingCountNum = document.getElementById('pendingCountNum');
+
+    /**
+     * Draw bounding box overlay onto canvas if detection bbox coordinates are present.
+     * Bounding box formats supported:
+     *   1) Percentage-based array: [x%, y%, w%, h%] from YOLOv8 output
+     *   2) Pixel-based array: [xmin, ymin, xmax, ymax]
+     */
+    function renderBoundingBoxOverlay(canvas, bbox, imgWidth, imgHeight) {
+      if (!canvas || !bbox || bbox.length < 4) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = imgWidth || 300;
+      canvas.height = imgHeight || 180;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      let x, y, w, h;
+      if (bbox[0] <= 100 && bbox[1] <= 100 && bbox[2] <= 100 && bbox[3] <= 100) {
+        // Percentage coordinates [xPct, yPct, wPct, hPct]
+        x = (bbox[0] / 100) * canvas.width;
+        y = (bbox[1] / 100) * canvas.height;
+        w = (bbox[2] / 100) * canvas.width;
+        h = (bbox[3] / 100) * canvas.height;
+      } else {
+        // Pixel coordinates [xmin, ymin, xmax, ymax] or [x, y, w, h]
+        x = bbox[0];
+        y = bbox[1];
+        w = (bbox[2] > bbox[0]) ? (bbox[2] - bbox[0]) : bbox[2];
+        h = (bbox[3] > bbox[1]) ? (bbox[3] - bbox[1]) : bbox[3];
+      }
+
+      // Draw glowing bounding box for operator review
+      ctx.strokeStyle = '#F59E0B'; // Amber alert glow
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x, y, w, h);
+
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+      ctx.fillRect(x, y, w, h);
+    }
+
+    /**
+     * Load pending items in the review queue
+     */
+    async function loadReviewQueue() {
+      try {
+        loadingState.style.display = 'block';
+        reviewQueueList.style.display = 'none';
+        emptyState.style.display = 'none';
+
+        // Fetch detections pending review (confidence < threshold)
+        const pendingItems = await RoadVisionAPI.Detection.getPendingReviewItems();
+
+        const currentUser = window.RoadVisionAuth ? window.RoadVisionAuth.getUser() : null;
+        const isFieldOperator = currentUser && currentUser.role === 'Field Operator';
+
+        pendingCountNum.textContent = pendingItems.length;
+
+        if (pendingItems.length === 0) {
+          loadingState.style.display = 'none';
+          emptyState.style.display = 'block';
+          if (window.updateReviewQueueBadgeCount) window.updateReviewQueueBadgeCount();
+          return;
+        }
+
+        reviewQueueList.innerHTML = pendingItems.map((item, idx) => {
+          const confidenceVal = item.confidence <= 1 ? item.confidence : item.confidence / 100;
+          const confScore = Math.round(confidenceVal * 100);
+          const badgeObj = confidenceBadge(confScore);
+
+          let imgSrc = item.plate_image;
+          if (!imgSrc) {
+            const evidence = getEvidenceByPlate(item.detected_plate);
+            imgSrc = evidence && evidence.image ? evidence.image : '';
+          }
+
+          const keyId = item.id || item.detected_plate;
+
+          return `
+            <div class="review-card" id="review-card-${idx}">
+              <div class="review-card-img">
+                ${imgSrc ? `<img src="${imgSrc}" alt="Plate crop ${item.detected_plate}" id="img-target-${idx}" />` : `
+                  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; color:var(--text-muted); gap:6px;">
+                    <span class="material-symbols-outlined" style="font-size:32px; opacity:0.5;">no_photography</span>
+                    <span style="font-size:11px; font-weight:600; opacity:0.7;">No crop available</span>
+                  </div>
+                `}
+                <canvas id="bbox-canvas-${idx}"></canvas>
+              </div>
+
+              <div class="review-card-body">
+                <div class="review-card-meta">
+                  <div>
+                    <span class="detection-label">OCR Raw Guess</span>
+                    <div style="font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--text-primary); margin-top:2px;">${item.detected_plate}</div>
+                  </div>
+                  <div style="margin-left:auto;">
+                    ${badgeObj.html}
+                  </div>
+                </div>
+
+                ${item.violation ? `
+                <div style="display:flex; gap:8px; align-items:center; font-size:12px;">
+                  <span class="detection-label">Violation:</span>
+                  <span class="badge alert">${item.violation}</span>
+                </div>
+                ` : ''}
+
+                <!-- Operator Correction Form -->
+                <div style="margin-top:6px;">
+                  <label style="display:block; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+                    Correct Registration / Number Plate
+                  </label>
+                  <input type="text" 
+                         id="input-${idx}" 
+                         class="review-input" 
+                         value="${item.detected_plate}" 
+                         placeholder="Enter corrected registration" 
+                         autocomplete="off" 
+                         spellcheck="false" 
+                         ${isFieldOperator ? 'disabled style="opacity:0.75; cursor:not-allowed;"' : ''} />
+                </div>
+
+                ${isFieldOperator ? `
+                  <div style="margin-top:12px; padding:8px 12px; background:var(--surface-secondary); border-radius:var(--radius-md); font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                    <span class="material-symbols-outlined" style="font-size:15px; color:var(--warning);">lock</span>
+                    <span>View-Only Mode: Field Operator cannot confirm or reject reviews.</span>
+                  </div>
+                ` : `
+                  <div class="review-actions">
+                    <button class="btn-confirm" onclick="confirmReview('${keyId}', ${idx}, '${item.detected_plate}')">
+                      <span class="material-symbols-outlined" style="font-size:16px;">check</span>
+                      Confirm
+                    </button>
+                    <button class="btn-reject" onclick="rejectReview('${keyId}', ${idx}, '${item.detected_plate}')">
+                      <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+                      Reject / Unreadable
+                    </button>
+                  </div>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        loadingState.style.display = 'none';
+        reviewQueueList.style.display = 'flex';
+
+        // Render bounding box overlays on canvas elements for items with bbox coordinates
+        pendingItems.forEach((item, idx) => {
+          /*
+           * TODO: Wire bounding box overlay to backend response data when YOLOv8 detection.bbox
+           * (e.g. [x%, y%, w%, h%] or [xmin, ymin, xmax, ymax]) is returned in full video pipeline payload.
+           */
+          if (item.bbox && Array.isArray(item.bbox) && item.bbox.length >= 4) {
+            const canvas = document.getElementById(`bbox-canvas-${idx}`);
+            const img = document.getElementById(`img-target-${idx}`);
+            if (img && canvas) {
+              if (img.complete) {
+                renderBoundingBoxOverlay(canvas, item.bbox, img.clientWidth || 200, img.clientHeight || 120);
+              } else {
+                img.onload = () => renderBoundingBoxOverlay(canvas, item.bbox, img.clientWidth || 200, img.clientHeight || 120);
+              }
+            }
+          }
+        });
+
+        // Update sidebar count badge
+        if (window.updateReviewQueueBadgeCount) window.updateReviewQueueBadgeCount();
+
+      } catch (e) {
+        console.error('Failed to load review queue:', e);
+        loadingState.style.display = 'none';
+        emptyState.style.display = 'block';
+      }
+    }
+
+    /**
+     * Operator Action: Confirm Correction
+     * Real API endpoint note: PATCH /api/detections/{id}/correct with { correct_plate: value, status: 'confirmed' }
+     */
+    async function confirmReview(keyId, idx, rawPlate) {
+      const user = window.RoadVisionAuth ? window.RoadVisionAuth.getUser() : null;
+      const role = user ? user.role : 'Reviewer/Supervisor';
+
+      if (role === 'Field Operator') {
+        alert('Access Denied: Field Operators are not authorized to confirm Review Queue items. Contact a Supervisor.');
+        return;
+      }
+
+      const inputEl = document.getElementById(`input-${idx}`);
+      const correctedVal = inputEl ? inputEl.value.trim().toUpperCase() : '';
+
+      if (!correctedVal) {
+        alert('Please enter a valid plate registration string before confirming.');
+        return;
+      }
+
+      // Submit operator correction via Detection API (persists in localStorage & backend API)
+      await RoadVisionAPI.Detection.correct(keyId, correctedVal, 'confirmed');
+      if (rawPlate && rawPlate !== keyId) {
+        await RoadVisionAPI.Detection.correct(rawPlate, correctedVal, 'confirmed');
+      }
+
+      // Record audit event
+      if (window.RoadVisionAudit) {
+        window.RoadVisionAudit.record('REVIEW_CONFIRM', keyId, { correctedPlate: correctedVal });
+      }
+
+      // Visual feedback & animation before re-loading queue
+      const card = document.getElementById(`review-card-${idx}`);
+      if (card) {
+        card.style.transition = 'all 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(-10px)';
+        setTimeout(() => loadReviewQueue(), 300);
+      } else {
+        loadReviewQueue();
+      }
+    }
+
+    async function rejectReview(keyId, idx, rawPlate) {
+      const user = window.RoadVisionAuth ? window.RoadVisionAuth.getUser() : null;
+      const role = user ? user.role : 'Reviewer/Supervisor';
+
+      if (role === 'Field Operator') {
+        alert('Access Denied: Field Operators are not authorized to reject Review Queue items.');
+        return;
+      }
+
+      if (!confirm('Mark this plate detection as rejected / unreadable?')) return;
+
+      // Submit operator rejection via Detection API
+      await RoadVisionAPI.Detection.correct(keyId, null, 'rejected');
+      if (rawPlate && rawPlate !== keyId) {
+        await RoadVisionAPI.Detection.correct(rawPlate, null, 'rejected');
+      }
+
+      // Record audit event
+      if (window.RoadVisionAudit) {
+        window.RoadVisionAudit.record('REVIEW_REJECT', keyId, { status: 'rejected' });
+      }
+
+      const card = document.getElementById(`review-card-${idx}`);
+      if (card) {
+        card.style.transition = 'all 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(-10px)';
+        setTimeout(() => loadReviewQueue(), 300);
+      } else {
+        loadReviewQueue();
+      }
+    }
+
+    window.addEventListener('load', loadReviewQueue);
+  </script>
+</body>
+</html>

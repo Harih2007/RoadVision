@@ -36,7 +36,7 @@
           <div class="card" data-glare="false" style="text-align:center;">
             <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
               <div
-                style="width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--primary-dark)); display:flex; align-items:center; justify-content:center; margin-bottom:12px; box-shadow:0 8px 16px rgba(59,130,246,0.3);">
+                style="width:64px; height:64px; border-radius:50%; background:var(--color-primary, #6C5CE7); display:flex; align-items:center; justify-content:center; margin-bottom:12px; box-shadow:0 8px 16px rgba(108,92,231,0.25);">
                 <span class="material-symbols-outlined" style="color:#fff; font-size:32px;">videocam</span>
               </div>
               <h3 style="margin:0; font-size:18px; font-weight:600;">Camera Information</h3>
@@ -88,7 +88,7 @@
           <div class="card" data-glare="false" style="text-align:center;">
             <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
               <div
-                style="width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, #10B981, #059669); display:flex; align-items:center; justify-content:center; margin-bottom:12px; box-shadow:0 8px 16px rgba(16,185,129,0.3);">
+                style="width:64px; height:64px; border-radius:50%; background:var(--color-primary, #6C5CE7); display:flex; align-items:center; justify-content:center; margin-bottom:12px; box-shadow:0 8px 16px rgba(108,92,231,0.25);">
                 <span class="material-symbols-outlined" style="color:#fff; font-size:32px;">location_on</span>
               </div>
               <h3 style="margin:0; font-size:18px; font-weight:600;">Location Details</h3>
@@ -160,9 +160,18 @@
   <script src="components/glare-hover.js"></script>
   <script src="api-client.js"></script>
   <script>
-    // Initialize map
-    let map = L.map('map').setView([20.5937, 78.9629], 5); // Default: India center
-    let marker = null;
+    // Default camera location: Chennai, India
+    const DEFAULT_LAT = 13.0827;
+    const DEFAULT_LNG = 80.2707;
+    const DEFAULT_ADDRESS = "Kilpauk, Chennai, Tamil Nadu 600010";
+    const DEFAULT_ACCURACY = "Default — not GPS verified";
+    const DEFAULT_ZOOM = 15;
+
+    // Initialize map at street-level zoom with a marker
+    let map = L.map('map').setView([DEFAULT_LAT, DEFAULT_LNG], DEFAULT_ZOOM);
+    let marker = L.marker([DEFAULT_LAT, DEFAULT_LNG]).addTo(map)
+      .bindPopup(`<b>Camera 1</b><br>${DEFAULT_ADDRESS}`)
+      .openPopup();
 
     // Add 100% free unrestricted OpenStreetMap tiles (no watermark, no API key needed)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -170,39 +179,59 @@
       maxZoom: 19
     }).addTo(map);
 
+    /**
+     * Unified location UI updater: Keeps map marker, lat, lng, address, and accuracy perfectly in sync.
+     */
+    function updateLocationUI(lat, lng, address, accuracy, cameraName = 'Camera 1') {
+      const numLat = parseFloat(lat);
+      const numLng = parseFloat(lng);
+
+      document.getElementById('latitudeInput').value = !isNaN(numLat) ? numLat.toFixed(6) : lat;
+      document.getElementById('longitudeInput').value = !isNaN(numLng) ? numLng.toFixed(6) : lng;
+      document.getElementById('addressDisplay').textContent = address || DEFAULT_ADDRESS;
+      document.getElementById('accuracyDisplay').textContent = accuracy || DEFAULT_ACCURACY;
+
+      if (!isNaN(numLat) && !isNaN(numLng)) {
+        map.setView([numLat, numLng], 16);
+        if (marker) {
+          marker.setLatLng([numLat, numLng]);
+          marker.setPopupContent(`<b>${cameraName}</b><br>${address || DEFAULT_ADDRESS}`);
+        } else {
+          marker = L.marker([numLat, numLng]).addTo(map)
+            .bindPopup(`<b>${cameraName}</b><br>${address || DEFAULT_ADDRESS}`)
+            .openPopup();
+        }
+      }
+    }
+
     // Load saved camera data
     function loadCameraData() {
       const cameraData = localStorage.getItem('roadvision_camera');
       if (cameraData) {
         try {
           const camera = JSON.parse(cameraData);
-          document.getElementById('cameraNameInput').value = camera.name || 'Camera 1';
+          const camName = camera.name || 'Camera 1';
+          document.getElementById('cameraNameInput').value = camName;
           document.getElementById('cameraIdInput').value = camera.id || 'CAM-001';
           document.getElementById('resolutionSelect').value = camera.resolution || '1080p';
 
           if (camera.latitude && camera.longitude) {
-            document.getElementById('latitudeInput').value = camera.latitude;
-            document.getElementById('longitudeInput').value = camera.longitude;
-            document.getElementById('addressDisplay').textContent = camera.address || 'Address not available';
-            document.getElementById('accuracyDisplay').textContent = camera.accuracy || 'Unknown';
-
-            // Update map
-            const lat = parseFloat(camera.latitude);
-            const lng = parseFloat(camera.longitude);
-            map.setView([lat, lng], 16);
-
-            if (marker) {
-              marker.setLatLng([lat, lng]);
-            } else {
-              marker = L.marker([lat, lng]).addTo(map)
-                .bindPopup(`<b>${camera.name}</b><br>${camera.address || 'Camera Location'}`)
-                .openPopup();
-            }
+            updateLocationUI(
+              camera.latitude,
+              camera.longitude,
+              camera.address || DEFAULT_ADDRESS,
+              camera.accuracy || DEFAULT_ACCURACY,
+              camName
+            );
+            return;
           }
         } catch (e) {
           console.error('Error loading camera data:', e);
         }
       }
+
+      // Default fallback synchronization
+      updateLocationUI(DEFAULT_LAT, DEFAULT_LNG, DEFAULT_ADDRESS, DEFAULT_ACCURACY, 'Camera 1');
     }
 
     // Detect location
@@ -223,40 +252,27 @@
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           const accuracy = Math.round(position.coords.accuracy);
+          const camName = document.getElementById('cameraNameInput').value || 'Camera 1';
 
-          // Update inputs
-          document.getElementById('latitudeInput').value = lat.toFixed(6);
-          document.getElementById('longitudeInput').value = lng.toFixed(6);
-          document.getElementById('accuracyDisplay').textContent = `±${accuracy} meters`;
-
-          // Update map
-          map.setView([lat, lng], 16);
-
-          if (marker) {
-            marker.setLatLng([lat, lng]);
-          } else {
-            marker = L.marker([lat, lng]).addTo(map)
-              .bindPopup('<b>Camera Location</b><br>Your current location')
-              .openPopup();
-          }
-
-          // Reverse geocode to get address
+          let address = 'GPS Location';
           try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
             const data = await response.json();
-            const address = data.display_name || 'Address not available';
-            document.getElementById('addressDisplay').textContent = address;
+            address = data.display_name || 'GPS Detected Address';
           } catch (e) {
             console.error('Error getting address:', e);
-            document.getElementById('addressDisplay').textContent = 'Address lookup failed';
+            address = `Detected GPS Position (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
           }
+
+          // Single function updates map + all 4 fields together
+          updateLocationUI(lat, lng, address, `±${accuracy} meters (GPS Verified)`, camName);
 
           btn.disabled = false;
           btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">my_location</span> Detect My Location';
         },
         (error) => {
           console.error('Geolocation error:', error);
-          alert('Unable to detect location. Please enable location services.');
+          alert('Unable to detect location. Please enable location services in browser.');
           btn.disabled = false;
           btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">my_location</span> Detect My Location';
         },
