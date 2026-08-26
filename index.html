@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RoadVision — Dashboard</title>
-  <meta name="description" content="RoadVision AI Dashboard — upload traffic footage, detect illegal number plates, and view analysis results." />
-  <style>html,body{background:#020617;margin:0;padding:0;}</style>
   <link rel="stylesheet" href="styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 </head>
@@ -467,7 +465,7 @@
         const correctedDisplay = r.correct_plate || '— (No correction needed)';
         const imgSection = imgSrc
           ? `<div class="detection-card-img" style="padding:0; overflow:hidden;"><img src="${imgSrc}" alt="Evidence: ${r.detected_plate}" style="width:100%; height:100%; object-fit:cover;" /></div>`
-          : `<div class="detection-card-img" style="background:#fff; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; letter-spacing:3px; color:#111; font-family:'Courier New',monospace; border-bottom:1px solid var(--border-color);">${r.detected_plate}</div>`;
+          : `<div class="detection-card-img" style="background:#F8FAFC; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; letter-spacing:2px; color:var(--text-primary); font-family:var(--font-mono); border-bottom:1px solid var(--border-color);">${r.detected_plate}</div>`;
 
         const violationBadge = r.violation
           ? `<span class="badge alert">${r.violation}</span>`

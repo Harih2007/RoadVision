@@ -26,9 +26,12 @@ backend-python/registration_db.sqlite
 backend-python/debug_plates/
 *.log
 
-# IDE
+# IDE & Tools
 .vscode/
 .idea/
+.kiro/
+.qoder/
+.pytest_cache/
 *.swp
 *.swo
 *~

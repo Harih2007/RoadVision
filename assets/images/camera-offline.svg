@@ -1,36 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
-  <!-- Dark background -->
-  <rect width="800" height="450" fill="#0f172a"/>
+  <!-- Clean Light Background -->
+  <rect width="800" height="450" fill="#F8FAFC"/>
   
-  <!-- Grid pattern -->
+  <!-- Subtle Grid Pattern -->
   <defs>
     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="1"/>
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#E2E8F0" stroke-width="1"/>
     </pattern>
   </defs>
   <rect width="800" height="450" fill="url(#grid)"/>
   
-  <!-- Camera icon -->
+  <!-- Soft Ambient Center Glow -->
+  <circle cx="400" cy="225" r="180" fill="#EEF2FF" opacity="0.6" />
+
+  <!-- Camera Icon -->
   <g transform="translate(400, 180)">
-    <!-- Camera body -->
-    <rect x="-60" y="-30" width="120" height="80" rx="8" fill="#334155" stroke="#475569" stroke-width="2"/>
+    <!-- Camera Body -->
+    <rect x="-60" y="-30" width="120" height="80" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
     <!-- Lens -->
-    <circle cx="0" cy="10" r="25" fill="#1e293b" stroke="#475569" stroke-width="2"/>
-    <circle cx="0" cy="10" r="15" fill="#0f172a"/>
+    <circle cx="0" cy="10" r="26" fill="#F1F5F9" stroke="#94A3B8" stroke-width="2"/>
+    <circle cx="0" cy="10" r="15" fill="#475569"/>
+    <circle cx="5" cy="5" r="4" fill="#FFFFFF" opacity="0.8"/>
     <!-- Viewfinder -->
-    <rect x="-50" y="-25" width="30" height="15" rx="3" fill="#1e293b"/>
-    <!-- Recording light (off) -->
-    <circle cx="35" cy="-15" r="5" fill="#475569"/>
+    <rect x="-48" y="-22" width="24" height="12" rx="3" fill="#E2E8F0"/>
+    <!-- Recording light -->
+    <circle cx="38" cy="-14" r="5" fill="#EF4444" opacity="0.8"/>
     
-    <!-- Slash through camera (offline indicator) -->
-    <line x1="-70" y1="-50" x2="70" y2="70" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+    <!-- Red offline slash with soft glow -->
+    <line x1="-70" y1="-50" x2="70" y2="70" stroke="#EF4444" stroke-width="4" stroke-linecap="round"/>
   </g>
   
   <!-- Text -->
-  <text x="400" y="290" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="600" fill="#cbd5e1" text-anchor="middle">
+  <text x="400" y="285" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="22" font-weight="700" fill="#0F172A" text-anchor="middle">
     Camera Offline
   </text>
-  <text x="400" y="320" font-family="Inter, system-ui, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">
-    Click the camera icon to enable webcam
+  <text x="400" y="315" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="13" font-weight="500" fill="#64748B" text-anchor="middle">
+    Click the camera icon below to activate the live feed
   </text>
 </svg>

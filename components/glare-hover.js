@@ -57,10 +57,10 @@ document.addEventListener("DOMContentLoaded", () => {
       glare.style.opacity = '1';
       glare.style.background = `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.15) 0%, transparent 60%)`;
       
-      // Dynamic box-shadow for depth
+      // Dynamic box-shadow for depth in light theme
       card.style.boxShadow = `
-        ${-rotateY}px ${rotateX}px 30px rgba(0, 0, 0, 0.5),
-        0 15px 40px rgba(0,0,0,0.6)
+        ${-rotateY}px ${rotateX}px 24px rgba(79, 70, 229, 0.08),
+        0 12px 30px rgba(0, 0, 0, 0.06)
       `;
       card.style.zIndex = '50';
     });
